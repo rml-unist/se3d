@@ -24,15 +24,14 @@ The following sections list the requirements for training/evaluation the model.
 
 ### Hardware
 Tested on:
-- **CPU** - 2 x Intel(R) Xeon(R) Silver 4210R CPU @ 2.40GHz
-- **RAM** - 256 GB
-- **GPU** - 8 x NVIDIA A100 (40 GB)
-- **SSD** - Samsung MZ7LH3T8 (3.5 TB)
+- **CPU** - AMD EPYC 7742 64-Core Processor
+- **RAM** - 1 TB
+- **GPU** - 2 x NVIDIA A100 (40 GB)
 
 ### Software
 Tested on:
-- [Ubuntu 18.04](https://ubuntu.com/)
-- [NVIDIA Driver 450](https://www.nvidia.com/Download/index.aspx)
+- [Ubuntu 20.04 and 18.04](https://ubuntu.com/)
+- [NVIDIA Driver 550](https://www.nvidia.com/Download/index.aspx)
 - [NVIDIA Container Toolkit](https://github.com/NVIDIA/nvidia-docker)
 
 ### Dataset
@@ -69,7 +68,7 @@ SE3D
 
 ### Pull docker image
 ```bash
-docker pull jcshinrml/se-od]
+docker pull jcshinrml/se-od
 ```
 
 ### Run docker container
@@ -105,7 +104,7 @@ cd /workspace/code/scripts && bash inference.sh
 
 - [Stereo Depth from Events Cameras: Concentrate and Focus on the Future - CVPR 2022 (PDF)](https://openaccess.thecvf.com/content/CVPR2022/papers/Nam_Stereo_Depth_From_Events_Cameras_Concentrate_and_Focus_on_the_CVPR_2022_paper.pdf)
 
-- [E2SRI: Learning to Super Resolve Intensity Images from Events - CVPR 2020 (PDF)](https://openaccess.thecvf.com/content_CVPR_2020/papers/Chen_DSGN_Deep_Stereo_Geometry_Network_for_3D_Object_Detection_CVPR_2020_paper.pdf)
+- [DSGN: Deep Stereo Geometry Network for 3D Object Detection - CVPR 2020 (PDF)](https://openaccess.thecvf.com/content_CVPR_2020/papers/Chen_DSGN_Deep_Stereo_Geometry_Network_for_3D_Object_Detection_CVPR_2020_paper.pdf)
 
 ## License
 
