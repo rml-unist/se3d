@@ -461,8 +461,6 @@ class Box3DList(BoxList):
         alpha = ((alpha > 0).float() + (alpha <= 0).float() * -1) * np.pi - alpha
         box3d = torch.cat([h, w, l, x, y, z, alpha], 1)
 
-        # print(alpha)
-
         bbox = Box3DList(transposed_boxes, self.size, mode="xyxy", ratios=self.ratios, box3d=box3d, Proj=self.Proj, img_id=self.img_id, Proj_R=self.Proj_R)
         # bbox._copy_extra_fields(self)
         for k, v in self.extra_fields.items():

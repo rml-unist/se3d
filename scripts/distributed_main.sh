@@ -2,22 +2,14 @@
 
 set -x
 
-# cuda_idx='0,1,2,3,4,5,6'
-# cuda_idx='1,2'
-cuda_idx='0,1,2,3,4'
-# config_path=/csha/csod1/configs/config.yaml
-# config_path=/csha/se-cff/configs/config_ori.yaml
+cuda_idx='0,1'
 config_path=/workspace/code/configs/config.yaml
-# data_root=/workspace/data/map6
 data_root=/workspace/data
-# data_root=/workspace/data
-# data_root=/csha/DSEC
-# save_root=/workspace/data/output/save/trial_11
-save_root=/workspace/data/output/save/sbn_noopt_eo_jjinmak
-checkpoint_path=/workspace/data/output/save/sbn_noopt_eo_jjinmak/weights/final.pth
+save_root=/workspace/data/output/save/sbn_noopt_eo
+checkpoint_path=/workspace/data/output/save/sbn_noopt_eo/weights/final.pth
 
-num_workers=20
-NUM_PROC=5
+num_workers=8
+NUM_PROC=2
 
 # Check if checkpoint_path is set and not commented out
 if [ -n "$checkpoint_path" ]; then

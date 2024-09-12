@@ -31,10 +31,7 @@ class DisparityDataset(torch.utils.data.Dataset):
                 if timestamp == "":
                     continue
                 else:
-                    # print(timestamp)
                     self.timestamp_to_disparity_path[domain][int(timestamp)] = filepath 
-            # self.timestamp_to_disparity_path[domain] = {timestamp: filepath for timestamp, filepath in
-            #                                             zip(self.timestamps, self.disparity_path_list[domain]) if timestamp is not ""}
         self.timestamps = np.array([int(timestamp)for timestamp in self.timestamps if timestamp != ""])
         self.timestamp_to_index = {
             timestamp: int(os.path.splitext(os.path.basename(self.timestamp_to_disparity_path['event'][timestamp]))[0])
@@ -62,7 +59,6 @@ def load_timestamp(root):
         for i, line in enumerate(lines):
             lines[i] = lines[i].replace("\n", "")
     return lines
-    # return np.loadtxt(root, dtype='int64')
 
 
 def get_path_list(root):

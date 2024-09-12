@@ -75,7 +75,6 @@ class MixedDensityEventStacking:
                 stacked_polarity.put(pf_stacked_event['index'][stack_idx],
                                      pf_stacked_event['stacked_polarity'][stack_idx])
                 cur_stacked_event_list.append(np.stack([stacked_polarity], axis=2))
-                # print(cur_stacked_event_list[-1].shape)
 
                 # Only update timestamp map with the last stack's data
                 if stack_idx == self.stack_size - 1:
@@ -99,7 +98,6 @@ class MixedDensityEventStacking:
             stacked_event_list[1] = stacked_event_list[1][:, :, ::-1, :]
 
         stacked_event = np.stack(stacked_event_list)
-        # print('stacked_event size:', stacked_event.shape)
         return stacked_event, separated_event_data[0]
 
     def make_stack(self, x, y, p, t):

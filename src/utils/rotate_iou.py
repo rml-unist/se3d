@@ -239,7 +239,6 @@ def inter(rbbox1, rbbox2):
     num_intersection = quadrilateral_intersection(corners1, corners2,
                                                   intersection_corners)
     sort_vertex_in_convex_polygon(intersection_corners, num_intersection)
-    # print(intersection_corners.reshape([-1, 2])[:num_intersection])
 
     return area(intersection_corners, num_intersection)
 

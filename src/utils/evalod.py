@@ -93,7 +93,6 @@ def get_thresholds(scores: np.ndarray, num_gt, num_sample_pts=41):
         # recall = l_recall
         thresholds.append(score)
         current_recall += 1 / (num_sample_pts - 1.0)
-    # print(len(thresholds), len(scores), num_gt)
     return thresholds
 
 
@@ -350,12 +349,8 @@ def compute_statistics_jit(overlaps,
         fp -= nstuff
         if compute_aos:
             tmp = np.zeros((fp + delta_idx, ))
-            # tmp = [0] * fp
             for i in range(delta_idx):
                 tmp[i + fp] = (1.0 + np.cos(delta[i])) / 2.0
-                # tmp.append((1.0 + np.cos(delta[i])) / 2.0)
-            # assert len(tmp) == fp + tp
-            # assert len(delta) == tp
             if tp > 0 or fp > 0:
                 similarity = np.sum(tmp)
             else:
@@ -364,10 +359,7 @@ def compute_statistics_jit(overlaps,
 
 
 def get_split_parts(num, num_part):
-    #same_part = num // num_part
-    #print('num########## num_part################',num,num_part)
     same_part = num // num_part
-    #print('############same_part',same_part)
     remain_num = num % num_part
     if remain_num == 0:
         return [same_part] * num_part
@@ -445,17 +437,13 @@ def calculate_iou_partly(gt_annos,
     total_gt_num = np.stack([len(a["name"]) for a in gt_annos], 0)
     num_examples = len(gt_annos)
     split_parts = get_split_parts(num_examples, num_parts)
-    #print('########################',split_parts)
     parted_overlaps = []
     example_idx = 0
     bev_axes = list(range(3))
     bev_axes.pop(z_axis)
     for num_part in split_parts:
         gt_annos_part = gt_annos[example_idx:example_idx + num_part]
-        #print('#############################',num_part,example_idx)
-        #print(gt_annos_part)
         dt_annos_part = dt_annos[example_idx:example_idx + num_part]
-        #print(dt_annos_part)
         if metric == 0:
             gt_boxes = np.concatenate([a["bbox"] for a in gt_annos_part], 0)
             dt_boxes = np.concatenate([a["bbox"] for a in dt_annos_part], 0)

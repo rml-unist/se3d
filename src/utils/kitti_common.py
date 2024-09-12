@@ -421,7 +421,6 @@ def iou(boxes1, boxes2, add1=False):
     return intersect / union
 
 def lidar_to_top_coords(x, y):
-    # print("TOP_X_MAX-TOP_X_MIN:",TOP_X_MAX,TOP_X_MIN)
     Xn = int((TOP_X_MAX - TOP_X_MIN) // TOP_X_DIVISION) + 1
     Yn = int((TOP_Y_MAX - TOP_Y_MIN) // TOP_Y_DIVISION) + 1
     xx = Yn - int((y - TOP_Y_MIN) // TOP_Y_DIVISION)
@@ -437,7 +436,6 @@ def roty(t):
 def project_to_image(pts_3d, P):
     n = pts_3d.shape[0]
     pts_3d_extend = np.hstack((pts_3d, np.ones((n, 1))))
-    # print(('pts_3d_extend shape: ', pts_3d_extend.shape))
     pts_2d = np.dot(pts_3d_extend, np.transpose(P))  # nx3
     pts_2d[:, 0] /= pts_2d[:, 2]
     pts_2d[:, 1] /= pts_2d[:, 2]
@@ -466,11 +464,9 @@ def compute_box_3d(obj, P):
 
     # rotate and translate 3d bounding box
     corners_3d = np.dot(R, np.vstack([x_corners, y_corners, z_corners]))
-    # print corners_3d.shape
     corners_3d[0, :] = corners_3d[0, :] + obj.t[0]
     corners_3d[1, :] = corners_3d[1, :] + obj.t[1]
     corners_3d[2, :] = corners_3d[2, :] + obj.t[2]
-    # print 'cornsers_3d: ', corners_3d
     # only draw 3d bounding box for objs in front of the camera
     if np.any(corners_3d[2, :] < 0.1):
         corners_2d = None
@@ -478,7 +474,6 @@ def compute_box_3d(obj, P):
 
     # project the 3d bounding box into the image plane
     corners_2d = project_to_image(np.transpose(corners_3d), P)
-    # print 'corners_2d: ', corners_2d
     return corners_2d, np.transpose(corners_3d)
 
 MATRIX_Mt = np.array(
@@ -759,9 +754,6 @@ def draw_box3d_on_top(
     is_gt=False,
 ):
 
-    # if scores is not None and scores.shape[0] >0:
-    # print(scores.shape)
-    # scores=scores[:,0]
     font = cv2.FONT_HERSHEY_SIMPLEX
     img = image.copy()
     num = len(boxes3d)
@@ -797,10 +789,8 @@ def draw_box3d_on_top(
 
 def show_lidar_topview_with_boxes(pc_velo, objects, calib, objects_pred=None):
     """ top_view image"""
-    # print('pc_velo shape: ',pc_velo.shape)
     top_view = lidar_to_top(pc_velo)
     top_image = draw_top_image(top_view)
-    #print("top_image:", top_image.shape)
     # gt
 
     def bbox3d(obj):
@@ -810,7 +800,6 @@ def show_lidar_topview_with_boxes(pc_velo, objects, calib, objects_pred=None):
 
     boxes3d = [bbox3d(obj) for obj in objects if obj.type != "DontCare"]
     gt = np.array(boxes3d)
-    # print("box2d BV:",boxes3d)
     lines = [obj.type for obj in objects if obj.type != "DontCare"]
     top_image = draw_box3d_on_top(
         top_image, gt, text_lables=lines, scores=None, thickness=1, is_gt=True
@@ -1017,9 +1006,7 @@ class Calibration(object):
         depth_UVDepth[:, 0] = depth_pt3d[:, 1]
         depth_UVDepth[:, 1] = depth_pt3d[:, 0]
         depth_UVDepth[:, 2] = depth_pt3d[:, 2]
-        # print("depth_pt3d:",depth_UVDepth.shape)
         depth_pc_velo = self.project_image_to_velo(depth_UVDepth)
-        # print("dep_pc_velo:",depth_pc_velo.shape)
         if constraint_box:
             depth_box_fov_inds = (
                 (depth_pc_velo[:, 0] < cbox[0][1])

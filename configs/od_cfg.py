@@ -13,14 +13,11 @@ cfg.hg_cv = True
 
 cfg.align_corners = True
 
-# cfg.valid_classes = [1,3]
 cfg.valid_classes = [1]
-#cfg.valid_classes = [1,2]
 cfg.GN = True
 
 cfg.num_classes = 1
 
-# cfg.input_size = [384, 1284]
 cfg.input_size = [384, 1248]
 cfg.output_size = [96, 312]
 
@@ -46,10 +43,6 @@ cfg.RPN_ONEMORE_CONV = True
 cfg.RPN_ONEMORE_DIM = 64
 cfg.RPN3D_ENABLE = True
 cfg.RPN3D = CN()
-# cfg.RPN3D.ANCHORS_Y = [0.74, 0.825, 0.74]
-# cfg.RPN3D.ANCHORS_HEIGHT = [1.73, 1.56, 1.73]
-# cfg.RPN3D.ANCHORS_WIDTH = [0.6, 1.6, 0.6]
-# cfg.RPN3D.ANCHORS_LENGTH = [0.8, 3.9, 1.76]
 cfg.RPN3D.ANCHORS_Y = [0.825]
 cfg.RPN3D.ANCHORS_HEIGHT = [1.56]
 cfg.RPN3D.ANCHORS_WIDTH = [1.6]
@@ -60,7 +53,6 @@ cfg.RPN3D.FOCAL_GAMMA = 2.0
 cfg.RPN3D.FOCAL_ALPHA = 0.25
 cfg.RPN3D.PRE_NMS_THRESH = 0.05
 cfg.RPN3D.PRE_NMS_TOP_N = 300
-#threshold!!! original 0.6
 cfg.RPN3D.NMS_THRESH = 0.6 # [0.6, 0.6, 0.45]
 cfg.RPN3D.POST_NMS_TOP_N = 30
 cfg.RPN3D.NUM_CONVS = 2
@@ -102,11 +94,6 @@ cfg.CV_INPUT_HEIGHT = int((cfg.CV_Y_MAX - cfg.CV_Y_MIN + np.sign(cfg.CV_VOXEL_Y_
 cfg.CV_INPUT_DEPTH = int((cfg.CV_Z_MAX - cfg.CV_Z_MIN + np.sign(cfg.CV_VOXEL_Z_SIZE) * 1e-10) / cfg.CV_VOXEL_Z_SIZE)
 cfg.CV_VOXEL_SIZE = [cfg.CV_VOXEL_Z_SIZE, cfg.CV_VOXEL_Y_SIZE, cfg.CV_VOXEL_X_SIZE]
 cfg.CV_GRID_SIZE = [cfg.CV_INPUT_DEPTH, cfg.CV_INPUT_HEIGHT, cfg.CV_INPUT_WIDTH]
-
-# print('depth: {} -> {}'.format(cfg.min_depth, cfg.max_depth))
-# print('z range: {} -> {}'.format(cfg.CV_Z_MIN, cfg.CV_Z_MAX))
-# print('GRID SIZE', cfg.GRID_SIZE)
-# print('CV GRID SIZE', cfg.CV_GRID_SIZE)
 
 cfg.ANCHOR_ANGLES = [0., np.pi / 2., np.pi, np.pi / 2. * 3.]
 cfg.num_angles = len(cfg.ANCHOR_ANGLES)

@@ -18,17 +18,8 @@ class SequenceDataset(torch.utils.data.Dataset):
         'disparity': 'disparity',
         'labels': 'label_2'
     }
-    # _PATH_DICT = {
-    #     'event': 'events',
-    #     'disparity': 'disparity',
-    #     'labels': 'label_4'
-    # }
-    # HEIGHT = 384
-    # WIDTH = 1284
     HEIGHT = 384
     WIDTH = 1248
-    # HEIGHT = 480
-    # WIDTH = 640
 
     def __init__(self, root, freeze_mode, split, sampling_ratio, event_cfg, disparity_cfg, labels_cfg,
                  crop_height, crop_width, num_workers=0):
@@ -81,11 +72,7 @@ class SequenceDataset(torch.utils.data.Dataset):
                     self.timestamps = self.timestamps[self.timestamps <= maximum_timestamp]
             self.timestamp_to_index = copy.copy(self.disparity_dataset.timestamp_to_index)
         elif split in ['test']:
-            # print(root, self.sequence_name)
             self.timestamps, self.timestamp_to_index = read_csv(os.path.join(root, 'timestamps_idx.csv'))
-            #print(self.timestamp_to_index)
-            #self.timestamps, self.timestamp_to_index = read_csv(os.path.join(root, "map6_1" + '.csv'))
-            # self.timestamps, self.timestamp_to_index = read_csv(os.path.join(root, "soleetest" + '.csv'))
         else:
             raise NotImplementedError
 
@@ -94,26 +81,11 @@ class SequenceDataset(torch.utils.data.Dataset):
         # Transforms
         if split in ['train', 'trainval']:
             self.transforms = transforms.Compose([
-        #         transforms.RandomCrop(event_module=event_module,
-        #                               disparity_module=disparity_module,
-        #                               crop_height=crop_height, crop_width=crop_width),
-        #                             #   labels_module=labels_module,
-
-        #         transforms.RandomVerticalFlip(event_module=event_module,
-        #                                       disparity_module=disparity_module,),
-        #                                     #   labels_module=labels_module, ),
                 transforms.ToTensor(event_module=event_module,
                                     disparity_module=disparity_module,)
-        #                             # labels_module=labels_module, ),
             ])
         elif split in ['validation', 'test']:
             self.transforms = transforms.Compose([
-        #         transforms.Padding(event_module=event_module,
-        #                            disparity_module=disparity_module,
-        #                            img_height=crop_height, img_width=crop_width,
-        #                            no_event_value=self.event_dataset.NO_VALUE,
-        #                            no_disparity_value=self.disparity_dataset.NO_VALUE,),
-        #                         #    no_labels_value=self.labels_dataset.NO_VALUE),
                 transforms.ToTensor(event_module=event_module,
                                     disparity_module=disparity_module, ),
             ])
@@ -126,10 +98,6 @@ class SequenceDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         data = self.load_data(idx)
-
-        #TODO
-        # transform 구현
-        # data = self.transforms(data)
 
         return data
 

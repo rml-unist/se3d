@@ -29,11 +29,6 @@ class LabelsDataset(torch.utils.data.Dataset):
         'labels': 'label_2',
         'left_img': 'image_2',
     }
-    # _PATH_DICT = {
-    #     'timestamp': 'timestamps.txt',
-    #     'labels': 'label_4',
-    #     'left_img': 'image_2',
-    # }
     _DOMAIN = ['labels', 'left_img']
     NO_VALUE = 0.0
 
@@ -51,7 +46,6 @@ class LabelsDataset(torch.utils.data.Dataset):
 
 
         self.timestamps = load_timestamp(os.path.join(root.replace('label_2', 'disparity'), self._PATH_DICT['timestamp']))
-        # self.timestamps = load_timestamp(os.path.join(root.replace('label_4', 'disparity'), self._PATH_DICT['timestamp']))
 
         self.labels_path_list = {}
         self.timestamp_to_labels_path = {}
@@ -60,13 +54,9 @@ class LabelsDataset(torch.utils.data.Dataset):
             self.labels_path_list[domain] = get_path_list(os.path.join(os.path.dirname(root), self._PATH_DICT[domain]))
             for timestamp, filepath in zip(self.timestamps, self.labels_path_list[domain]):
                 if timestamp == "":
-                    # print(filepath)
                     continue
                 else:
-                    # print(timestamp)
                     self.timestamp_to_labels_path[domain][int(timestamp)] = filepath 
-            # self.timestamp_to_labels_path[domain] = {timestamp: filepath for timestamp, filepath in
-            #                                             zip(self.timestamps, self.labels_path_list[domain]) if timestamp is not ""}
         self.timestamps = np.array([int(timestamp)for timestamp in self.timestamps if timestamp is not ""])
 
         self.timestamp_to_index = {
@@ -102,28 +92,6 @@ class LabelsDataset(torch.utils.data.Dataset):
 
     @staticmethod
     def collate_fn(batch):
-
-        # #######################
-        # num_bboxs = [ data[-1][0] for data in batch ]
-        # max_num_bboxs = max(num_bboxs)
-
-        # for data in batch:
-        #     target = data[-1]
-        #     num_bbox = target[0]
-        #     padded_bbox = torch.zeros((max_num_bboxs, 4))
-        #     padded_box3d = torch.zeros((max_num_bboxs, 7))
-        #     padded_box_corners = torch.zeros((max_num_bboxs, 8, 3))
-
-        #     padded_bbox[:num_bbox] = target[1]
-        #     padded_box3d[:num_bbox] = target[2]
-        #     padded_box_corners[:num_bbox] = target[3]
-
-        #     target = [torch.tensor(num_bbox), padded_bbox, padded_box3d, padded_box_corners]
-        # #######################
-
-
-        # batch = torch.utils.data._utils.collate.default_collate(batch)
-
         return batch
 
     def load_labels(self, root):
@@ -139,15 +107,10 @@ class LabelsDataset(torch.utils.data.Dataset):
         # box labels 
         if self.training or self.generate_target:
             if self.cfg.RPN3D_ENABLE:
-                # print(root)
                 labels = kitti_util.read_label(root)
                 boxes, box3ds, ori_classes = get_kitti_annos(labels, valid_classes=self.valid_classes)
-                # print(boxes)
 
-                calib_path = "/workspace/data/calib.txt"
-                #calib_path = root.replace('label_2', 'calib')
-                #print(calib_path)
-                
+                calib_path = "/workspace/data/calib.txt"                
 
                 calib = kitti_util.Calibration.fromfile(calib_path)
                 calib_R = kitti_util.Calibration.fromrightfile(calib_path)
@@ -183,9 +146,6 @@ class LabelsDataset(torch.utils.data.Dataset):
                     target = Box3DList(boxes, left_img.size, mode="xyxy", box3d=box3ds, Proj=calib.P, Proj_R=calib_R.P)
                     classes = torch.as_tensor(ori_classes)
                     target.add_field('labels', classes)
-
-                    # if cfg.flip_this_image:
-                    #     target = target.transpose(0)
 
                     if not cfg.flip_this_image:
                         save_file = '{}/{:06d}.npz'.format(self.save_path, image_index)
@@ -238,7 +198,6 @@ class LabelsDataset(torch.utils.data.Dataset):
                             dist_bevs.append(dist_bev)
 
                             # note that this can one anchor <-> many labels
-                            # print(target_box3ds.shape)
                             labels_map = torch.zeros((len(dist_bev), len(target_box3ds)), dtype=torch.uint8)
                             for i in range(len(target_box3ds)):
                                 if (cls == 2 and self.less_car) or ((cls == 1 or cls == 3) and self.less_human):
@@ -246,18 +205,13 @@ class LabelsDataset(torch.utils.data.Dataset):
                                 else:
                                     box_pixels = (target_box3ds[i, 1] * target_box3ds[i, 2]) / np.fabs(self.cfg.VOXEL_X_SIZE * self.cfg.VOXEL_Z_SIZE)
                                 box_pixels = abs(int(box_pixels))
-                                #print(box_pixels)
                                 topk_mindistance, topk_mindistance_ind = torch.topk(dist_bev[:, i], box_pixels, largest=False, sorted=False)
 
                                 labels_map[topk_mindistance_ind[topk_mindistance < 5.], i] = cls
                             labels_maps.append(labels_map)
 
                         dist_bev = torch.cat(dist_bevs, dim=1)
-                        # sparse.save_npz(save_file, sparse.csr_matrix(dist_bev))
-                        # print('Saved {}'.format(save_file))
                         labels_map = torch.cat(labels_maps, dim=1)
-                        # sparse.save_npz(save_label_file, sparse.csr_matrix(labels_map))
-                        # print('Saved {}'.format(save_label_file))
                         
                         iou = sparse.csr_matrix(dist_bev)
                         labels_map = sparse.csr_matrix(labels_map)
@@ -267,46 +221,6 @@ class LabelsDataset(torch.utils.data.Dataset):
                             labels_map = sparse.load_npz(save_label_file)
 
 
-        # if self.cfg.flip_this_image:
-        #     left_img = hflip(left_img) 
-
-        # left_img.show()
-        # processed = preprocess.get_transform(augment=False)
-        # left_img = processed(left_img)
-        # left_img = torch.reshape(left_img,[1,3,left_img.shape[1],left_img.shape[2]])
-
-        # top_pad = 384-left_img.shape[2]
-        # left_pad = 1248-left_img.shape[3]
-
-        # left_img = F.pad(left_img,(0,left_pad, 0,top_pad),'constant',0)
-
-        #######################
-        # # calib
-        # calibs_fu = torch.as_tensor(calib.f_u)
-        # calibs_baseline = torch.abs(torch.as_tensor((calib.P[0,3]-calib_R.P[0,3])/calib.P[0,0]))
-        # calibs_Proj = torch.as_tensor(calib.P)
-
-        # # calib_R
-        # calibs_Proj_R = torch.as_tensor(calib_R.P)        
-
-        # # target
-        # if num_bbox > 0:
-        #     target = [ num_bbox, target.bbox, target.box3d, target.box_corners() ]
-    
-        # # left_img
-        # tf = torchvision.transforms.ToTensor()
-        # left_img = tf(left_img)
-
-        # outputs = [ left_img,
-        #             calibs_fu,
-        #             calibs_baseline,
-        #             calibs_Proj,
-        #             calibs_Proj_R,
-        #             image_index,
-        #             left_img_size,
-        #             target,
-        #         ]
-        #######################
         outputs = [
             np.asarray(left_img)[np.newaxis, :, :].astype(np.float32)/255,
             image_index,
@@ -327,7 +241,6 @@ def load_timestamp(root):
             lines[i] = lines[i].replace("\n", "")
 
     return lines
-    # return np.loadtxt(root, dtype='int64')
 
 def get_path_list(root):
     return [os.path.join(root, filename) for filename in sorted(os.listdir(root))]
@@ -349,7 +262,6 @@ def project_rect_to_image(bbox, P):
     '''
     pts_3d_rect = compute_box_3d(dim=bbox[0:3], location=bbox[3:6], rotation_y=bbox[-1])
     pts_2d = np.dot(pts_3d_rect, np.transpose(P[:,0:3])) # nx3
-    # pts_2d = np.dot(pts_3d_rect, P) # nx3
     pts_2d[:,0] /= pts_2d[:,2]
     pts_2d[:,1] /= pts_2d[:,2]
     print(pts_2d)
@@ -395,7 +307,6 @@ def draw_projected_3d_bounding_boxes(img, bounding_boxes):
         img1.line([points[1], points[5]], fill='red', width=2)
         img1.line([points[2], points[6]], fill='red', width=2)
         img1.line([points[3], points[7]], fill='red', width=2)
-        # print(points)
     img.show()
 
     return img
@@ -411,8 +322,6 @@ if __name__ == '__main__':
     print(root)
     left_img_path = os.path.join(root, 'label_2', image_index + ".png")
     left_img = Image.open(left_img_path).convert('RGB')
-    # tf = torchvision.transforms.ToPILImage()
-    # left_img = tf(left_img)
 
     print(dataset.timestamp_to_labels_path['labels'][794576059265])
     print(calib)

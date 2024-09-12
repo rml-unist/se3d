@@ -47,7 +47,6 @@ class EventDataset(torch.utils.data.Dataset):
                 try:
                     event_data = torch.load(save_path)
                 except:
-                    # print(save_path)
                     event_data = self._pre_load_event_data(timestamp=timestamp)
                     torch.save(event_data, save_path)
             else:

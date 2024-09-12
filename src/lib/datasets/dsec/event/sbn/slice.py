@@ -38,7 +38,6 @@ def load_events_with_retry(event_root, t_start_us_idx, t_end_us_idx, t_offset, m
 
         except (OSError, IOError) as e:
             attempts += 1
-            # print(f"Attempt {attempts}/{max_retries} failed with error: {e}. Retrying...")
 
     raise Exception("Failed to read event data after {} retries".format(max_retries))
 
@@ -67,7 +66,6 @@ def load_time_with_retry(event_root, t_start_ms_idx, t_end_ms_idx, max_retries=1
 
         except (OSError, IOError) as e:
             attempts += 1
-            # print(f"Attempt {attempts}/{max_retries} failed with error: {e}. Retrying...")
 
     raise Exception("Failed to read event data after {} retries".format(max_retries))
 

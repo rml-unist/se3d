@@ -41,10 +41,6 @@ class Crop:
         start_y, end_y = offset_y, offset_y + self.crop_height
         start_x, end_x = offset_x, offset_x + self.crop_width
 
-        #TODO
-        # crop할때 left_img만 크롭하고 bbox는 크롭 아직 구현 안함
-        # bbox crop 구현
-
         # left_img crop
         sample[0] = sample[0][start_y:end_y, start_x:end_x]
 

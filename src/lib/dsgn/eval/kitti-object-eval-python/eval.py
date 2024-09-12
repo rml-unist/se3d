@@ -33,7 +33,6 @@ def get_thresholds(scores: np.ndarray, num_gt, num_sample_pts=41):
         # recall = l_recall
         thresholds.append(score)
         current_recall += 1 / (num_sample_pts - 1.0)
-    # print(len(thresholds), len(scores), num_gt)
     return thresholds
 
 
@@ -290,12 +289,8 @@ def compute_statistics_jit(overlaps,
         fp -= nstuff
         if compute_aos:
             tmp = np.zeros((fp + delta_idx, ))
-            # tmp = [0] * fp
             for i in range(delta_idx):
                 tmp[i + fp] = (1.0 + np.cos(delta[i])) / 2.0
-                # tmp.append((1.0 + np.cos(delta[i])) / 2.0)
-            # assert len(tmp) == fp + tp
-            # assert len(delta) == tp
             if tp > 0 or fp > 0:
                 similarity = np.sum(tmp)
             else:
