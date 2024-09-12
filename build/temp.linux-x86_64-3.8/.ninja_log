@@ -1,0 +1,17 @@
+# ninja log v5
+2	15912	1677762384745442474	/solee/se-od/build/temp.linux-x86_64-3.8/solee/se-od/src/lib/dsgn/csrc/cuda/nms.o	7b054cc8ae108023
+1	15914	1677762384749442420	/solee/se-od/build/temp.linux-x86_64-3.8/solee/se-od/src/lib/dsgn/csrc/cuda/BuildCostVolume_cuda.o	f85e90930067d713
+2	16010	1677762384849441057	/solee/se-od/build/temp.linux-x86_64-3.8/solee/se-od/src/lib/dsgn/csrc/cuda/ROIAlign_cuda.o	e3c17d6b6d9706d0
+1	17031	1677762385865427219	/solee/se-od/build/temp.linux-x86_64-3.8/solee/se-od/src/lib/dsgn/csrc/cuda/SigmoidFocalLoss_cuda.o	b6ce47a671f5a08b
+1	17759	1677762386593417304	/solee/se-od/build/temp.linux-x86_64-3.8/solee/se-od/src/lib/dsgn/csrc/cuda/ROIPool_cuda.o	e9d91be93caf138b
+1	23009	1677762391845345801	/solee/se-od/build/temp.linux-x86_64-3.8/solee/se-od/src/lib/dsgn/csrc/cpu/ROIAlign_cpu.o	f7b62013aa1fc00d
+1	23287	1677762392125341992	/solee/se-od/build/temp.linux-x86_64-3.8/solee/se-od/src/lib/dsgn/csrc/cpu/nms_cpu.o	d0adec1fe3853a48
+1	26480	1677762395313298612	/solee/se-od/build/temp.linux-x86_64-3.8/solee/se-od/src/lib/dsgn/csrc/vision.o	40fb5e061f7b23dc
+5	16670	1677762412777061262	/solee/se-od/build/temp.linux-x86_64-3.8/solee/se-od/src/lib/dsgn/csrc/cuda/ROIPool_cuda.o	8df68a546e3045d8
+6	17131	1677762413229055126	/solee/se-od/build/temp.linux-x86_64-3.8/solee/se-od/src/lib/dsgn/csrc/cuda/nms.o	db686ef723f77c31
+5	17282	1677762413385053009	/solee/se-od/build/temp.linux-x86_64-3.8/solee/se-od/src/lib/dsgn/csrc/cuda/BuildCostVolume_cuda.o	4ab7f1cfa31c7747
+6	17386	1677762413485051651	/solee/se-od/build/temp.linux-x86_64-3.8/solee/se-od/src/lib/dsgn/csrc/cuda/ROIAlign_cuda.o	9935fb0f3a4583b8
+6	17406	1677762413509051325	/solee/se-od/build/temp.linux-x86_64-3.8/solee/se-od/src/lib/dsgn/csrc/cuda/SigmoidFocalLoss_cuda.o	d319bf6fa553fbc9
+5	21371	1677762417476997468	/solee/se-od/build/temp.linux-x86_64-3.8/solee/se-od/src/lib/dsgn/csrc/cpu/ROIAlign_cpu.o	5927d97ffc781253
+5	22589	1677762418696980913	/solee/se-od/build/temp.linux-x86_64-3.8/solee/se-od/src/lib/dsgn/csrc/cpu/nms_cpu.o	b113374014cacb97
+4	25317	1677762421420943959	/solee/se-od/build/temp.linux-x86_64-3.8/solee/se-od/src/lib/dsgn/csrc/vision.o	f481cf4da070f0a2
