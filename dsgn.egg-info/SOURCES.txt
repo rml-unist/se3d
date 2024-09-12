@@ -1,0 +1,15 @@
+README.md
+setup.py
+/csha/csod1/src/lib/dsgn/csrc/vision.cpp
+/csha/csod1/src/lib/dsgn/csrc/cpu/ROIAlign_cpu.cpp
+/csha/csod1/src/lib/dsgn/csrc/cpu/nms_cpu.cpp
+/csha/csod1/src/lib/dsgn/csrc/cuda/BuildCostVolume_cuda.cu
+/csha/csod1/src/lib/dsgn/csrc/cuda/ROIAlign_cuda.cu
+/csha/csod1/src/lib/dsgn/csrc/cuda/ROIPool_cuda.cu
+/csha/csod1/src/lib/dsgn/csrc/cuda/SigmoidFocalLoss_cuda.cu
+/csha/csod1/src/lib/dsgn/csrc/cuda/nms.cu
+dsgn.egg-info/PKG-INFO
+dsgn.egg-info/SOURCES.txt
+dsgn.egg-info/dependency_links.txt
+dsgn.egg-info/requires.txt
+dsgn.egg-info/top_level.txt

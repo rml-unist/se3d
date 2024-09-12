@@ -1,0 +1,3 @@
+# ninja log v5
+2	9299	1724870732150377155	/workspace/code/src/lib/se_cff/deform_conv/build/temp.linux-x86_64-3.8/src/deform_conv_cuda_kernel.o	b44cc2ca05e4b22e
+2	16981	1724870739827520604	/workspace/code/src/lib/se_cff/deform_conv/build/temp.linux-x86_64-3.8/src/deform_conv_cuda.o	993bcfb34d856fe9

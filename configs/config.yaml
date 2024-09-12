@@ -1,0 +1,89 @@
+TOTAL_EPOCH: 100
+FREEZE_MODE: none # [ disparity, detection, ] 
+PRETRAINED_WEIGHT_PATH: None
+METHOD: base
+DATASET:
+  TRAIN:
+    NAME: dsec
+    PARAMS:
+      split: train
+      sampling_ratio: 1
+      crop_height: 384
+      crop_width: 1248
+      event_cfg:
+        NAME: sbn
+        PARAMS:
+          num_of_event: 7800000 # 5000000
+          stack_method: MixedDensityEventStacking
+          stack_size: 10
+          use_preprocessed_image: True
+      disparity_cfg:
+        NAME: base
+        PARAMS: { }
+      labels_cfg:
+        NAME: base
+        PARAMS:
+          training: True
+          generate_target: True
+  TEST:
+    NAME: dsec
+    PARAMS:
+      split: test
+      sampling_ratio: 1
+      crop_height: 384
+      crop_width: 1248
+      event_cfg:
+        NAME: sbn
+        PARAMS:
+          num_of_event: 7800000 # 5000000
+          stack_method: MixedDensityEventStacking
+          stack_size: 10
+          use_preprocessed_image: True
+      disparity_cfg:
+        NAME: none
+        PARAMS: { }
+      labels_cfg:
+        NAME: base
+        PARAMS:
+          training: False
+          generate_target: True
+DATALOADER:
+  TRAIN:
+    NAME: get_multi_epochs_dataloader
+    PARAMS:
+      batch_size: 5
+      shuffle: True
+      drop_last: True
+  TEST:
+    NAME: get_sequence_dataloader
+    PARAMS:
+      batch_size: 1
+      shuffle: False
+      drop_last: False
+MODEL:
+  NAME: MyModel
+  PARAMS:
+    concentration_net:
+      PARAMS:
+        in_channels: 10
+        attention_method: soft
+        base_channels: 32
+    disparity_estimator:
+      PARAMS:
+        in_channels: 1
+        max_disp: 192
+        refine_channels: 1
+
+OPTIMIZER:
+  NAME: Adam
+  PARAMS:
+    lr: 0.001
+    weight_decay: 0.0001
+SCHEDULER:
+  NAME: CosineAnnealingWarmupRestarts
+  PARAMS:
+    cycle_mult: 1.0
+    first_cycle_steps: 200
+    gamma: 1.0
+    lr_ratio: 0.0001
+    warmup_steps: 3

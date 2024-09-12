@@ -1,0 +1,29 @@
+name: solee
+channels:
+  - pytorch
+  - conda-forge
+  - nvidia
+  - numba
+  - defaults
+dependencies:
+  - python=3.8
+  - nvidia::cudatoolkit=11.0
+  - pytorch=1.10.1
+  - pandas
+  # - opencv
+  - torchvision=0.10.0
+  # - matplotlib
+  - numpy
+  - numba::numba=0.53.1
+  - scipy
+  - scikit-image
+  - h5py=2.10.0 
+  - blosc-hdf5-plugin=1.0.0
+  - scikit-video=1.1.11 
+  - tqdm=4.61.1
+  - prettytable=2.1.0
+  - pip
+  - pip:
+      - -r requirements.txt
+prefix: /opt/conda/envs/solee
+
