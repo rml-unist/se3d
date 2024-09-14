@@ -11,7 +11,6 @@ import numpy as np
 
 from lib.dsgn.utils.bounding_box import compute_corners, quan_to_angle, \
     angle_to_quan, quan_to_rotation, compute_corners_sc
-# from lib.dsgn.layers import BuildCostVolume
 
 def project_rect_to_image(pts_3d_rect, P):
     n = pts_3d_rect.shape[0]
@@ -157,7 +156,6 @@ class ObjectDetectionNet(nn.Module):
         self.bn4 = nn.BatchNorm3d(64)
         self.relu = nn.ReLU()
 
-    #def forward(self, left_img, pred_disp, cost_volume, calibs_Proj):
     def forward(self, left_feature, pred_disp, cost_volume,calibs_Proj):
         N = cost_volume[0].shape[0]
                    

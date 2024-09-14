@@ -24,9 +24,6 @@ class ToTensor:
         if 'disparity' in sample.keys():
             sample['disparity'] = self.disparity_transform(sample['disparity'])
 
-        # if 'labels' in sample.keys():
-        #     sample['labels'] = self.labels_transform(sample['labels'])
-
         return sample
 
 
@@ -36,7 +33,6 @@ class RandomCrop:
         self.crop_width = crop_width
         self.event_transform = event_module.transforms.Crop(crop_height, crop_width)
         self.disparity_transform = disparity_module.transforms.Crop(crop_height, crop_width)
-        # self.labels_transform = labels_module.transforms.Crop(crop_height, crop_width)
 
     def __call__(self, sample):
         if 'event' in sample:
@@ -53,20 +49,16 @@ class RandomCrop:
         if 'disparity' in sample.keys():
             sample['disparity'] = self.disparity_transform(sample['disparity'], offset_x, offset_y)
 
-        # if 'labels' in sample.keys():
-        #     sample['labels'] = self.labels_transform(sample['labels'], offset_x, offset_y)
-
         return sample
 
 
 class Padding:
-    def __init__(self, event_module, disparity_module,# labels_module,
+    def __init__(self, event_module, disparity_module,
                  img_height, img_width, no_event_value=0, no_disparity_value=0, no_labels_value=0):
         self.img_height = img_height
         self.img_width = img_width
         self.event_transform = event_module.transforms.Padding(img_height, img_width, no_event_value)
         self.disparity_transform = disparity_module.transforms.Padding(img_height, img_width, no_disparity_value)
-        # self.labels_transform = labels_module.transforms.Padding(img_height, img_width, no_labels_value)
 
     def __call__(self, sample):
         if 'event' in sample.keys():
@@ -75,17 +67,13 @@ class Padding:
         if 'disparity' in sample.keys():
             sample['disparity'] = self.disparity_transform(sample['disparity'])
 
-        # if 'labels' in sample.keys():
-        #     sample['labels'] = self.labels_transform(sample['labels'])
-
         return sample
 
 
 class RandomVerticalFlip:
-    def __init__(self, event_module, disparity_module,):# labels_module):
+    def __init__(self, event_module, disparity_module,):
         self.event_transform = event_module.transforms.VerticalFlip()
         self.disparity_transform = disparity_module.transforms.VerticalFlip()
-        # self.labels_transform = labels_module.transforms.VerticalFlip()
 
     def __call__(self, sample):
         if np.random.random() < 0.5:
@@ -94,8 +82,5 @@ class RandomVerticalFlip:
 
             if 'disparity' in sample.keys():
                 sample['disparity'] = self.disparity_transform(sample['disparity'])
-
-            # if 'labels' in sample.keys():
-            #     sample['labels'] = self.labels_transform(sample['labels'])
 
         return sample

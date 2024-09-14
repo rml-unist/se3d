@@ -39,7 +39,6 @@ def train(model,
         ('Disparity_Loss', AverageMeter(string_format='%6.3lf')),
         ('Detection_Loss', AverageMeter(string_format='%6.3lf')),
         ('Loss', AverageMeter(string_format='%6.3lf')),
-        # ('Detection_Loss', AverageMeter(string_format='%6.3lf')),
         ('EPE', EndPointError(average_by='image', string_format='%6.3lf')),
         ('1PE', NPixelError(n=1, average_by='image', string_format='%6.3lf')),
         ('2PE', NPixelError(n=2, average_by='image', string_format='%6.3lf')),
@@ -68,14 +67,12 @@ def train(model,
         calibs_Proj_R = torch.as_tensor(np.array([c.P for c in calib_R]))
 
         ious = [data[-5] for data in batch_data['labels']]
-        labels_map = [ data[-4] for data in batch_data['labels']]        
-        # left_img = torch.tensor([data[0] for data in batch_data['labels']]).cuda()
+        labels_map = [ data[-4] for data in batch_data['labels']]
 
 
         targets = [ data[-1] for data in batch_data['labels'] ]
         pred, detection_pred, loss, detection_loss = model(left_event=batch_data['event']['left'],
                            right_event=batch_data['event']['right'],
-                        #    left_img=left_img,
                            separated_event=batch_data['separated_event'],
                            gt_disparity=batch_data['disparity'],
                            calibs_fu=calibs_fu,
@@ -85,7 +82,6 @@ def train(model,
                            targets=targets,
                            ious=ious,
                            labels_map=labels_map)
-        #optimizer.zero_grad()
         if is_distributed:
             tensor_list = [torch.zeros([1], dtype=torch.int).cuda() for _ in range(world_size)]
             cur_tensor = torch.tensor([loss.size(0)], dtype=torch.int).cuda()
@@ -95,20 +91,13 @@ def train(model,
         else:
             loss = loss.mean()
         
-        
-        alpha_ewma.update(loss.item())
-        beta_ewma.update(detection_loss.item())
-        total_avg = alpha_ewma.avg + beta_ewma.avg
-        alpha_new = alpha * alpha_ewma.avg / total_avg
-        beta_new = (1 - alpha_new)
-        #jisoo_loss = alpha_new * loss + beta_new * detection_loss
-        jisoo_loss = 0.8*loss+0.2*detection_loss
-        jisoo_loss.backward()
+        total_loss = 0.8*loss+0.2*detection_loss
+        total_loss.backward()
         if (i + 1) % accumulation_steps == 0:
             optimizer.step()
             optimizer.zero_grad()
 
-        log_dict['Loss'].update(jisoo_loss.item())#, pred.size(0))
+        log_dict['Loss'].update(total_loss.item())
         log_dict['Disparity_Loss'].update(loss.item())
         log_dict['Detection_Loss'].update(detection_loss.item())
         log_dict['EPE'].update(pred, batch_data['disparity'], mask)
@@ -116,7 +105,7 @@ def train(model,
         log_dict['2PE'].update(pred, batch_data['disparity'], mask)
         log_dict['RMSE'].update(pred, batch_data['disparity'], mask)
         
-        pbar.set_description('Epoch {} Loss: {:.4f}'.format(epoch+1, jisoo_loss.item()))
+        pbar.set_description('Epoch {} Loss: {:.4f}'.format(epoch+1, total_loss.item()))
         pbar.update()
         
 
@@ -149,12 +138,9 @@ def test(model,
         labels_map = [ data[-4] for data in batch_data['labels']] 
         
         batch_data = batch_to_cuda(batch_data)
-        
-        # left_img = torch.as_tensor([data[0] for data in batch_data['labels']]).cuda()
 
         pred, detection_pred, _, _ = model(left_event=batch_data['event']['left'],
                         right_event=batch_data['event']['right'],
-                        # left_img=left_img,
                         separated_event=batch_data['separated_event'],
                         gt_disparity=None,
                         calibs_fu=calibs_fu,

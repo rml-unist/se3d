@@ -29,8 +29,6 @@ class Padding:
 
         return sample
 
-# outputs = [left_img, calib, calib_R, image_index, target]
-
 class Crop:
     def __init__(self, crop_height, crop_width):
         self.crop_height = crop_height

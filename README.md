@@ -88,7 +88,6 @@ bash python ./src/main.py
 
 ## Training
 ```bash
-# cd /workspace/code/src/model/se-cff/scripts
 cd /workspace/code/scripts && bash distributed_main.sh
 ```
 

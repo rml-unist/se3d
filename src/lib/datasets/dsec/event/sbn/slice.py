@@ -121,8 +121,6 @@ class EventSlicer(torch.utils.data.Dataset):
         assert t_start_ms_idx is not None or t_end_ms_idx is not None
 
         events = dict()
-        # with h5py.File(self.event_root, 'r') as h5f:
-        #     time_array_conservative = np.asarray(h5f['events/{}'.format('t')][t_start_ms_idx:t_end_ms_idx])
         time_array_conservative = load_time_with_retry(self.event_root, t_start_ms_idx, t_end_ms_idx)
         _, idx_end_offset = self.get_time_indices_offsets(time_array_conservative, t_start_us, t_end_us)
         t_end_us_idx = t_start_ms_idx + idx_end_offset

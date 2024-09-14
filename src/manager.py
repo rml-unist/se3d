@@ -62,8 +62,6 @@ class DLManager:
         self.method = getattr(methods, self.cfg.METHOD)
 
     def train(self):
-        # self.freeze_mode = self.args.freeze_mode # disparity, detection
-        # self.pretrained_weight_path = self.cfg.PRETRAINED_WEIGHT_PATH
         if self.args.is_master:
             self._log_before_train()
             wandb.watch(self.model)
@@ -127,7 +125,6 @@ class DLManager:
                             "train/1PE": train_log_dict['1PE'].value,
                             "train/2PE": train_log_dict['2PE'].value,
                             "train/RMSE": train_log_dict['RMSE'].value})
-            # torch.cuda.empty_cache()
 
     def test(self):
         if self.args.is_master:
@@ -342,7 +339,7 @@ class DLManager:
 
     def _gather_log_all_reduce(self, log_dict):
         for key in log_dict.keys():
-            if torch.is_tensor(log_dict[key].value):  # 여기에서 텐서인지 확인합니다.
+            if torch.is_tensor(log_dict[key].value):
                 log_dict[key].value = self._all_reduce_tensor(log_dict[key].value)
         return log_dict
 

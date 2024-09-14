@@ -42,22 +42,6 @@ class MixedDensityEventStacking:
 
         return stacked_event_list
 
-    # def post_stack(self, pre_stacked_event):
-    #     stacked_event_list = []
-    #     for pf_stacked_event in pre_stacked_event:
-    #         stacked_polarity = np.zeros([self.height, self.width, 1], dtype=np.float32)
-    #         cur_stacked_event_list = []
-    #         for stack_idx in range(self.stack_size - 1, -1, -1):
-    #             stacked_polarity.put(pf_stacked_event['index'][stack_idx],
-    #                                  pf_stacked_event['stacked_polarity'][stack_idx])
-    #             cur_stacked_event_list.append(np.stack([stacked_polarity], axis=2))
-    #         stacked_event_list.append(np.concatenate(cur_stacked_event_list[::-1], axis=2))
-    #     if len(stacked_event_list) == 2:
-    #         stacked_event_list[1] = stacked_event_list[1][:, :, ::-1, :]
-    #     stacked_event = np.stack(stacked_event_list, axis=2)
-
-    #     return stacked_event
-    
     def torch_div(self, x, y):
         return torch.div(x, y, rounding_mode='trunc'), torch.remainder(x, y)
     

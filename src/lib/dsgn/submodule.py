@@ -8,9 +8,6 @@ import math
 import numpy as np
 from torch.nn import BatchNorm2d
 
-# def convbn(in_planes, out_planes, kernel_size, stride, pad, dilation, gn=False, groups=32):
-#     return nn.Sequential(nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=dilation if dilation > 1 else pad, dilation = dilation, bias=False),
-                        #  nn.BatchNorm2d(out_planes) if not gn else nn.GroupNorm(groups, out_planes))
 import torch.nn as nn
 
 def convbn(in_planes, out_planes, kernel_size, stride, pad, dilation, gn=False, groups=32, deconv=False):

@@ -38,7 +38,6 @@ cfg = get_cfg(args.config_path)
 args.freeze_mode = cfg.FREEZE_MODE
 
 exp_manager = DLManager(args, cfg)
-# exp_manager = DLManager(args)
 exp_manager.load(args.checkpoint_path)
 
 exp_manager.test()

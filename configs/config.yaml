@@ -13,7 +13,7 @@ DATASET:
       event_cfg:
         NAME: sbn
         PARAMS:
-          num_of_event: 7800000 # 5000000
+          num_of_event: 7800000 # 5000000 on DSEC
           stack_method: MixedDensityEventStacking
           stack_size: 10
           use_preprocessed_image: True
@@ -35,7 +35,7 @@ DATASET:
       event_cfg:
         NAME: sbn
         PARAMS:
-          num_of_event: 7800000 # 5000000
+          num_of_event: 7800000 # 5000000 on DSEC
           stack_method: MixedDensityEventStacking
           stack_size: 10
           use_preprocessed_image: True

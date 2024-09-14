@@ -535,7 +535,6 @@ def show_image_with_boxes(img, objects, calib=None, show3d=True, depth=None):
             2,
         )
 
-        #### We dont use the 3D bbox visualization!! #####
         box3d_pts_2d, box3d_pts_3d = compute_box_3d(obj, calib.P)
         if box3d_pts_2d is None:
             print("something wrong in the 3D box.")

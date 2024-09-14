@@ -1,7 +1,7 @@
 import os, sys
 import argparse
 
-# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # /workspace/code/
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from manager import DLManager
 from utils.config import get_cfg
 
