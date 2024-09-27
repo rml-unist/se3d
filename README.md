@@ -118,7 +118,7 @@ You can download pre-trained model from [here](https://drive.google.com/file/d/1
 
 - [DSGN: Deep Stereo Geometry Network for 3D Object Detection - CVPR 2020 (PDF)](https://openaccess.thecvf.com/content_CVPR_2020/papers/Chen_DSGN_Deep_Stereo_Geometry_Network_for_3D_Object_Detection_CVPR_2020_paper.pdf)
 
-- [CARLA-KITTI data collector (GitHub page)](https://github.com/fnozarian/CARLA-KITTI)
+- [CARLA-KITTI Data Collector (GitHub)](https://github.com/fnozarian/CARLA-KITTI)
 
 ## License
 
