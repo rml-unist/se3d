@@ -1,6 +1,6 @@
 ### SE3D: A Stereo Event Camera Dataset for 3D Perception in Autonomous Driving Across Diverse Weather Conditions
 
-If you use any of this code, please cite both following publications:
+<!-- If you use any of this code, please cite following publications: -->
 
 ### Maintainers
 * [Jaechan Shin]()
@@ -35,33 +35,46 @@ Tested on:
 - [NVIDIA Container Toolkit](https://github.com/NVIDIA/nvidia-docker)
 
 ### Dataset
-Download [SE3D]() datasets.
+Download [SE3D](https://drive.google.com/drive/folders/1zwnqBDSj8OoYPkiBQ1F-BFCwXPKsUnXw?usp=sharing) dataset.
 
-#### 📂 Data structure
+#### Data structure
 Our folder structure is as follows:
 ```
 SE3D
-├── map1
-│   ├── map1_day_sunny_moving
-│   │   ├── calib
-│   │   │   ├── calib.txt
-│   │   ├── disparity
-│   │   │   ├── event
-│   │   │   │   ├── 000000.npy
-│   │   │   │   ├── ...
-│   │   │   │   └── 000999.npy
-│   │   │   └── timestamps_with_label.txt
-│   │   └── events
-│   │       ├── left
-│   │       │   ├── events.h5
-│   │       │   └── rectify_map.h5
-│   │       └── right
-│   │           ├── events.h5
-│   │           └── rectify_map.h5
-│   ├── ...
-│   └── map1_night_heavyrain_moving               # same structure as map1/map1_day_sunny_moving
-└── map2                                          # same structure as map1
-└── ...
+├── train
+│   ├── map1
+│   │   ├── map1_day_rain
+│   │   │   ├── depth_map
+│   │   │   │   ├── 000000.png
+│   │   │   │   ├── ...
+│   │   │   │   └── 000999.png
+│   │   │   ├── disparity
+│   │   │   │   ├── event
+│   │   │   │   │   ├── 000000.npy
+│   │   │   │   │   ├── ...
+│   │   │   │   │   └── 000999.npy
+│   │   │   │   └── timestamps_with_label.txt
+│   │   │   ├── events
+│   │   │   │   ├── left
+│   │   │   │   │   ├── events.h5
+│   │   │   │   │   └── rectify_map.h5
+│   │   │   │   └── right
+│   │   │   │       ├── events.h5
+│   │   │   │       └── rectify_map.h5
+│   │   │   └── ...
+│   │   ├── map1_day_sunny          # Same structure as map1_day_sunny
+│   │   └── ...                     
+│   ├── map2                        # Same structure as map1
+│   └── ...
+├── val                             # Same structure as train
+│   ├── map1
+│   │   └── map1_night_rain         
+│   ├── map2
+│   └── ...
+├── test
+│   ├── ...                         # Same structure as train
+│   └── ...
+└── calib.txt                       # Same calibration for all sequences
 ```
 
 ## Getting started
@@ -97,13 +110,15 @@ cd /workspace/code/scripts && bash inference.sh
 ```
 
 ### Pre-trained model
-:gear: You can download pre-trained model from [here]()
+You can download pre-trained model from [here](https://drive.google.com/file/d/1VE8TxGdxZSkxMoGoTd9QVCe6-t25Kspi/view?usp=sharing)
 
 ## Related publications
 
 - [Stereo Depth from Events Cameras: Concentrate and Focus on the Future - CVPR 2022 (PDF)](https://openaccess.thecvf.com/content/CVPR2022/papers/Nam_Stereo_Depth_From_Events_Cameras_Concentrate_and_Focus_on_the_CVPR_2022_paper.pdf)
 
 - [DSGN: Deep Stereo Geometry Network for 3D Object Detection - CVPR 2020 (PDF)](https://openaccess.thecvf.com/content_CVPR_2020/papers/Chen_DSGN_Deep_Stereo_Geometry_Network_for_3D_Object_Detection_CVPR_2020_paper.pdf)
+
+- [CARLA-KITTI data collector (GitHub page)](https://github.com/fnozarian/CARLA-KITTI)
 
 ## License
 

@@ -51,7 +51,7 @@ DATALOADER:
   TRAIN:
     NAME: get_multi_epochs_dataloader
     PARAMS:
-      batch_size: 5
+      batch_size: 2
       shuffle: True
       drop_last: True
   TEST:
