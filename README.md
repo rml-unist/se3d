@@ -4,7 +4,7 @@
 
 ### Maintainers
 * [Jaechan Shin]()
-* [Hyeon woo Jang]()
+* [Hyeonwoo Jang]()
 * [Jeonghwan Song]()
 
 ## Table of contents
