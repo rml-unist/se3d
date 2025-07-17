@@ -1,4 +1,4 @@
-### SE3D: A Stereo Event Camera Dataset for 3D Perception in Autonomous Driving Across Diverse Weather Conditions
+### SE3D: A Synthetic Stereo Event Camera Dataset for 3D Perception in Autonomous Driving Across Diverse Weather Conditions
 
 <!-- If you use any of this code, please cite following publications: -->
 
