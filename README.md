@@ -110,7 +110,7 @@ cd /workspace/code/scripts && bash inference.sh
 ```
 
 ### Pre-trained model
-You can download pre-trained model from [here](https://drive.google.com/file/d/1VE8TxGdxZSkxMoGoTd9QVCe6-t25Kspi/view?usp=sharing)
+You can download pre-trained model from here. [day](https://drive.google.com/file/d/1oP243riu8iHUeHBtKUQ1ePZhH-AvtyP2/view?usp=sharing) [night](https://drive.google.com/file/d/1LvxuIKIe28NAxI0TPnHS5-BKkBJAzgD-/view?usp=sharing)
 
 ## Related publications
 
