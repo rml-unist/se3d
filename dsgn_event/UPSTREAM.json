@@ -1,0 +1,6 @@
+{
+  "repository": "https://github.com/JIA-Lab-research/DSGN",
+  "commit": "ac693e748ff3a7372b1292c2b7b3796854072030",
+  "adaptation": "10-channel cached events; PyTorch operator/device compatibility; common SE3D seven-class loss/evaluation adapter",
+  "unused_paths": "Upstream outputs and data/kitti are dangling user-local symlinks and are not used by this adapter"
+}

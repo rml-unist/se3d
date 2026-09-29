@@ -1,0 +1,6 @@
+{
+  "source": "Stage1/detection/al3d_det/datasets/dsec/waymo_eval_detection.py in https://github.com/mickeykang16/Ev3DOD",
+  "sha256": "59c033997d639af950941640d38fb0e271c22212ea5423bec51d4bfae23c6726",
+  "upstream": "https://github.com/mickeykang16/Ev3DOD",
+  "note": "Unmodified official metric wrapper; call fake_gt_infos=False for real LiDAR labels."
+}

@@ -1,0 +1,19 @@
+# Install PyTorch first:
+#   pip install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu124
+numpy==1.26.4
+numba==0.60.0
+scipy==1.13.1
+h5py==3.14.0
+hdf5plugin==7.1.0
+opencv-python-headless==4.11.0.86
+scikit-image==0.24.0
+pillow==11.3.0
+PyYAML==6.0.3
+easydict==1.13
+yacs==0.1.8
+einops==0.8.2
+timm==0.6.13
+matplotlib==3.9.4
+fire==0.7.1
+tqdm
+tensorboardX==2.6.5

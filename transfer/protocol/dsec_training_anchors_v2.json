@@ -1,0 +1,25 @@
+{
+  "training_anchor_dimensions": {
+    "Vehicle": {
+      "height": 1.613177,
+      "width": 1.930958,
+      "length": 4.301556,
+      "center_y": 0.5565603923576647,
+      "annotations": 7693
+    },
+    "Pedestrian": {
+      "height": 1.740742,
+      "width": 0.615682,
+      "length": 0.648196,
+      "center_y": 0.39471810550912156,
+      "annotations": 1916
+    },
+    "Cyclist": {
+      "height": 1.797956,
+      "width": 0.7355,
+      "length": 1.59268,
+      "center_y": 0.5509851787233195,
+      "annotations": 163
+    }
+  }
+}
