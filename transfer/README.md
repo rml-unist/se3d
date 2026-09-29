@@ -90,7 +90,7 @@ python transfer/train.py --model se_cff --init scratch --output runs/dsec_se_cff
 python transfer/train.py --model se_cff --init se3d --source weights/se3d_emod_8ep.pth --output runs/dsec_se_cff_se3d $COMMON
 ```
 
-Test on the 1,178 keyframes (also works with the released target checkpoints):
+Test the trained target model on the 1,178 keyframes:
 
 ```bash
 python transfer/test.py --model dsgn_event --checkpoint runs/dsec_dsgn_event_se3d_20260909/best.pth \
@@ -125,8 +125,11 @@ Pedestrian AP; MAE is the disparity error (px) at the keyframes.
 | SE-CFF | SE3D | 20260909 | – | – | – | 0.743 | 1.774 | 12 |
 
 Supplementary Sec. 10 also trains the DSGN-event SE3D arm (seed 20260909) from a
-source trained on the deduplicated SE3D annotations; the same script reproduces
-it with `--source weights/se3d_dsgn_event_8ep_label.pth` (V/P AP 6.25%, MAE 0.814 px).
+source trained on the deduplicated SE3D annotations (V/P AP 6.25%, MAE 0.814 px).
+For this comparison, train the source model with
+`python tools/train.py --model dsgn_event --data-root /data/SE3D --labels corrected --epochs 8 --output runs/se3d_dsgn_event_corrected_8ep`,
+then pass `--source runs/se3d_dsgn_event_corrected_8ep/last.pth` to the target
+training command above.
 
 Scores obtained on another GPU type differ slightly from these (in our checks,
 box coordinates by about 1e-3 m and scores by about 1e-4 on identical inputs).

@@ -167,18 +167,16 @@ keyframes and disparity MAE (px):
 
 ## Checkpoints
 
-In `weights/` of the Drive folder. SHA256 sums are in `weights/SHA256SUMS`.
+The [weights folder](https://drive.google.com/drive/folders/1MwzAA26ub8axup1DAWub370x7JyHbtHl)
+contains four checkpoints (314 MB): two for the SE3D benchmark and two source
+checkpoints for transfer learning. SHA256 sums are in `weights/SHA256SUMS`.
 
 | File | Model | Training |
 |---|---|---|
 | `se3d_emod_40ep.pth` | EMOD | SE3D, 40 epochs, all conditions (selected epoch 17) |
 | `se3d_dsgn_event_40ep.pth` | DSGN-event | SE3D, 40 epochs, all conditions (selected epoch 29) |
-| `se3d_emod_sunny_105ep.pth` | EMOD | SE3D, sunny conditions only (selected epoch 57) |
 | `se3d_emod_8ep.pth` | EMOD | SE3D, 8 epochs; initialization for the EMOD and SE-CFF transfer |
 | `se3d_dsgn_event_8ep.pth` | DSGN-event | SE3D, 8 epochs; initialization for the DSGN-event transfer |
-| `se3d_emod_8ep_label.pth`, `se3d_dsgn_event_8ep_label.pth` | EMOD, DSGN-event | SE3D, 8 epochs on the deduplicated annotations |
-| `dsec_<model>_<scratch\|se3d>_<seed>.pth` | all three | DSEC-3DOD target models of the transfer table |
-| `dsec_dsgn_event_se3d_label_20260909.pth` | DSGN-event | DSEC-3DOD, initialized from `se3d_dsgn_event_8ep_label.pth` |
 
 ## Citation
 
