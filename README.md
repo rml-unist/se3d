@@ -1,4 +1,4 @@
-# SE3D: A Synthetic Stereo Event Camera Dataset for Joint Depth Estimation and 3D Object Detection across Illumination and Rain Conditions
+# SE3D: A Synthetic Stereo Event Camera Dataset for 3D Perception
 
 SE3D is a stereo event camera dataset generated with CARLA 0.9.15. Every frame
 provides rectified stereo events with a 0.6-m baseline, dense disparity for all
