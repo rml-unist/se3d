@@ -141,6 +141,10 @@ numbers also reflect the town and its traffic. Night-rain Car AP rests on only
 seven boxes; night-heavy-rain has no Car GT and its AP is undefined (–).
 The validation split contains neither Bus nor night-sunny examples, which
 limits what checkpoint selection can measure. The split is kept fixed.
+The historical Sun model used 105 passes over 10,233 sunny training frames
+and AP11 selection on the sunny validation subset. Thus its training and
+selection conditions both differed from All. The new study fixes the exact
+update budget and shares full-condition validation across these arms.
 
 A completed, matched **8-epoch annotation comparison** is available in
 [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md#earlier-annotation-comparison).

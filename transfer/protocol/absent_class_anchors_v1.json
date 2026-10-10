@@ -1,0 +1,16 @@
+{
+  "schema": "dsec-absent-class-anchor-fallback-v1",
+  "provenance": {
+    "frozen_before_subset_annotation_inspection": true,
+    "definition": "Static KITTI-era detector constants already documented in emod/configs/od_cfg.py; reordered from Pedestrian,Car,Cyclist to Vehicle,Pedestrian,Cyclist.",
+    "source_file": "emod/configs/od_cfg.py",
+    "source_lines_at_freeze": "49-56",
+    "data_dependence": "No DSEC, SE3D, held-out or excluded training labels are used to compute these constants.",
+    "usage": "Use only when a class has zero raw boxes in a chosen training subset; identical fallback in scratch and pretrained arms. Present classes always use their subset-only medians."
+  },
+  "training_anchor_dimensions": {
+    "Vehicle": {"height": 1.56, "width": 1.6, "length": 3.9, "center_y": 0.825},
+    "Pedestrian": {"height": 1.73, "width": 0.6, "length": 0.8, "center_y": 0.74},
+    "Cyclist": {"height": 1.73, "width": 0.6, "length": 1.76, "center_y": 0.74}
+  }
+}

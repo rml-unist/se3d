@@ -11,7 +11,9 @@ The public entry points are `tools/train.py`, `tools/test.py`,
 | `se3d/data.py` | explicit split frames, labels, sensor inputs and event cache location |
 | `se3d/models.py` | baseline construction and shared class/anchor configuration |
 | `se3d/engine.py` | inference, postprocessing and shared metric aggregation |
-| `emod/configs/se3d_revision.py` | one implementation of SE3D and DSEC class/anchor configuration |
+| `emod/configs/se3d_revision.py` | shared SE3D class/anchor configuration and the historical DSEC file helper |
+| `transfer/common.py`, `transfer/protocol_utils.py` | target classes, validated embedded/subset anchors, input provenance and evaluation |
+| `transfer/runtime.py` | exact-update target training, RNG/cursor resumption and partial validation |
 | `emod/src/lib/dsgn/` | detection head, training loss and postprocessing used by the joint baselines |
 | `dsgn_event/dsgn/models/stereonet.py` | the distinct DSGN stereo backbone used by DSGN-event |
 | `tools/maintainers/` | archive import, release packaging and completed-run verification |
@@ -55,7 +57,11 @@ archive without recompressing sensor data.
 ## Checks
 
 `python tools/check_protocol.py` and `python -m unittest discover -s tests -v`
-run without the dataset, PyTorch or a GPU. CI also checks Python syntax. For a
+run without the dataset, PyTorch or a GPU. CI also checks Python syntax and
+runs `python -m unittest discover -s transfer/tests -v` with CPU PyTorch.
+Those transfer tests check update budgets, stochastic optimizer/RNG resumption,
+partial-validation coverage and training-only subsets/anchors. They do not
+claim to run the full detector or official Waymo operator in CI. For a
 real input/inference check, use `tools/quick_check.py` as described in README.
 The small check is not a benchmark and does not establish training variance.
 

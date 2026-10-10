@@ -42,6 +42,9 @@ It has the same update budget and validation opportunities as all-condition
 training. It uses sunny-training anchors. Full-condition validation is shared
 by both arms; this is a comparison of **training conditions**, not a claim that
 non-sunny labeled data were never available for model selection.
+The historical sunny model instead used 105 training passes (1,074,465
+updates) and sunny-only AP11 validation. Its existing table remains a
+historical reference with those different budget and selection conditions.
 
 The original-label controls use original-training anchors and corrected
 validation. They measure the combined annotation-and-anchor change at one
@@ -144,6 +147,12 @@ Both arms cycle through their selected frames to the same update budget; the
 number of passes varies by fraction. Missing-class anchor defaults are fixed
 before training and recorded with provenance, without inspecting excluded
 target annotations. Held-out chunks are unchanged.
+
+Each fraction uses one fixed labeled subset, so its three-seed SD measures
+optimization variation conditional on that subset, not variation across
+different labeled samples. The 10% subset has only four Pedestrian boxes;
+report the class and empty-frame counts alongside AP and do not generalize
+this one subset's class balance to every possible 10% sample.
 
 The complete study has at most 41 training runs before any verified reuse:
 11 source, 12 full-label target and 18 label-efficiency runs. Historical timing
