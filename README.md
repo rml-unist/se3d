@@ -253,8 +253,7 @@ keyframes and disparity MAE (px), corresponding to manuscript Table VI:
 
 These historical transfer runs use the original-label source checkpoints.
 The DSGN-event mean ± sample SD varies three **target** seeds while fixing
-one source model. Corrected-source, source-seed and label-efficiency follow-ups
-are specified in [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md#transfer-follow-ups).
+one source model.
 
 ## Checkpoints
 

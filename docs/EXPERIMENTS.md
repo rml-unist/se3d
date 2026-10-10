@@ -2,7 +2,7 @@
 
 This page covers the historical training commands, corrected-label experiments
 and the 8-epoch annotation comparison. Results for the corrected-label
-40-epoch and label-efficiency experiments are pending.
+40-epoch experiments are pending.
 
 ## Historical paper protocol (Tables IV and V)
 
@@ -120,18 +120,11 @@ restore before CUDA initialization. Older checkpoints without these flags
 use the historical profile with a warning. Evaluation output records the
 settings and their source. Changing profiles requires a new output directory.
 
-## Runtime and resumption
+## Resuming training
 
-`effective_config.json` records annotation, split, anchor and runtime source
-hashes, budget, selection rule and seed. `environment.json` records package,
-CUDA and GPU information. `last.pth` stores optimizer and RNG states, epoch,
-within-epoch cursor and completed validation state. Repeating the same command
-resumes it; mismatched code, inputs or configuration are rejected.
-
-`--max-seconds` and `--allocation-updates` limit one scheduler job without changing
-the experiment budget. A time limit, SIGTERM or SIGUSR1 saves and returns exit
-code 75. Validation interrupted at a boundary is rerun before further updates.
-Resume exit-75 jobs with the same command.
+Repeat the same command and output directory to resume from `last.pth`.
+Use a new output directory when changing code, inputs or training settings.
+See `python tools/train.py --help` for checkpoint and time-limit options.
 
 ## Earlier annotation comparison
 
@@ -148,31 +141,3 @@ change together. Full values and checkpoint hashes are in
 | DSGN-event | release | 23.0085 | 1.5303 |
 
 Truck AP40 is zero in all four runs.
-
-## Transfer follow-ups
-
-The manuscript study varied target seeds while holding one original-label
-source fixed. Corrected-source experiments use source weights saved at
-214,368 updates and retain the 3,906/434/1,178 target split.
-
-| Target study (DSGN-event) | Source seeds | Target seeds | Runs |
-|---|---|---|---:|
-| Full-label scratch | none | 20260909/10/11 | 3 |
-| Full-label corrected-source transfer | 20260909/10/11 | 20260909/10/11, crossed with every source | 9 |
-| Label efficiency, scratch and corrected-source pairs | fixed 20260909 | 20260909/10/11 at each fraction | 18 |
-
-Each target run uses exactly 62,496 updates and validation every 3,906 updates
-(16 selection slots). Select the highest official mean Vehicle/Pedestrian
-Level-2 validation AP; the earliest tied step wins. Test once at that selected
-checkpoint and use the same checkpoint for disparity evaluation.
-
-The nine source/target combinations share source models and scratch references.
-Summarize target-seed variation at fixed source 20260909 and source-seed
-variation at fixed target 20260909 separately; the nine combinations are not
-independent paired trials.
-
-Label-efficiency runs share nested training subsets across seeds and
-scratch/pretrained pairs. Both supervision types and anchor statistics use
-only the selected frames. Validation, test and update budgets stay fixed.
-The [transfer guide](../transfer/README.md#corrected-source-seed-and-label-efficiency-experiments)
-provides the subset construction, class counts and commands.

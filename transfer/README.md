@@ -113,101 +113,16 @@ predictions can be re-scored without a GPU:
 metrics_env/bin/python transfer/evaluate_waymo.py results/.../fixed_test_predictions.pkl metrics.json
 ```
 
-## Corrected-source seed and label-efficiency experiments
-
-The corrected-source experiment crosses three source seeds
-(`20260909`, `20260910`, `20260911`) with those same three target optimization
-seeds. Each source is the corrected DSGN-event checkpoint at update
-214,368, which is epoch 8 of the full SE3D training pool. Three scratch runs,
-one per target seed, provide shared references. The nine pretrained runs share
-source weights and scratch references. Summarize source-seed and target-seed
-variation separately, holding the other seed fixed.
-
-Label-efficiency runs use the single fixed corrected source seed `20260909` at
-update 214,368. The same nested subsets are used across the three target seeds
-and both initialization arms. Whole training chunks are ordered by
-`SHA256("se3d-target-label-efficiency-chunks-v1/20261010/" + chunk)`; each subset
-takes the first `ceil(fraction * 126)` chunks in that order. Internal validation
-and test remain the same 434 and 1,178 keyframes. Subset membership depends
-only on chunk names and the fixed subset seed.
-
-| Nominal labels | Actual labels | Chunks | Frames | Empty frames | Vehicle boxes | Pedestrian boxes | Cyclist boxes |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| 10% | 10.3175% | 13 | 403 | 135 | 655 | 4 | 41 |
-| 25% | 25.3968% | 32 | 992 | 261 | 1,848 | 230 | 59 |
-| 50% | 50.0000% | 63 | 1,953 | 410 | 3,828 | 535 | 98 |
-
-All selected frames, including empty frames, are retained. The 10% subset has
-only four Pedestrian boxes. Standard deviations across target seeds describe
-optimization variation with subset membership fixed.
-
-Both box and disparity supervision use only the selected training frames.
-Anchor dimensions and center heights are recomputed from those frames alone,
-and the scratch/pretrained pair shares the resulting anchor file.
-If a class has no raw boxes, the constants in
-[`absent_class_anchors_v1.json`](protocol/absent_class_anchors_v1.json) are used
-only for that class. No fallback is needed for the three subsets above.
-Training recomputes these statistics and rejects anchors that differ from
-the selected training data.
-
-```bash
-python transfer/prepare_subsets.py --dsec-root /data/DSEC/train \
-    --labels-root /data/DSEC-3DOD --output runs/target_subsets
-
-SOURCE=/path/to/corrected_dsgn_source_s20260909/step_0214368.pth
-SOURCE_SHA256=$(sha256sum "$SOURCE" | cut -d ' ' -f 1)
-SUBSETS=runs/target_subsets
-DATA=(--dsec-root /data/DSEC/train --labels-root /data/DSEC-3DOD \
-      --metrics-python metrics_env/bin/python)
-for FRACTION in 10 25 50; do
-  for SEED in 20260909 20260910 20260911; do
-    PAIR=(--model dsgn_event --backend-profile historical --seed "$SEED" \
-          --updates 62496 --validate-every 3906 \
-          --subset "$SUBSETS/fraction_$FRACTION/subset.json" \
-          --anchors "$SUBSETS/fraction_$FRACTION/anchors.json")
-    python transfer/train.py "${DATA[@]}" "${PAIR[@]}" --init scratch \
-        --output "runs/labels_${FRACTION}_scratch_$SEED"
-    python transfer/train.py "${DATA[@]}" "${PAIR[@]}" --init se3d \
-        --source "$SOURCE" --source-sha256 "$SOURCE_SHA256" \
-        --source-seed 20260909 --source-step 214368 \
-        --output "runs/labels_${FRACTION}_pretrained_$SEED"
-  done
-done
-```
-
-Use `--manifests-only` to write subset lists without reading annotations.
-The 100% reference uses the full-pool command without
-`--subset` or `--anchors`. For the source/target seed matrix, change the source
-checkpoint and `--source-seed` together and retain the same target budget.
-
-Every fraction trains for **62,496 updates**, with **16 validations** at
-multiples of 3,906. Smaller subsets repeat more often under this equal update
-budget. Use `--updates` and `--validate-every` for subset comparisons;
-`--epochs` is a shorthand based on the full training pool.
-
-## Resuming training
-
-Repeat the same command and output directory to resume from `last.pth`.
-It restores the model, optimizer, random-number generators, sample order and
-validation progress. Interrupted validation finishes before the next update.
-Changed code, inputs or settings require a new output directory.
-
-`SIGUSR1`, `SIGTERM` or the time limit saves a checkpoint and returns **75**.
-For a 10h30 job, `--max-seconds 37800 --save-margin-seconds 900` requests a save
-15 minutes before the end. Use the actual job time limit; `SLURM_JOB_END_TIME`
-is also accepted as a Unix timestamp. Resubmit with the same command after
-exit 75. `--allocation-updates N` stops after N additional updates for resume
-checks.
-
-`effective_config.json` records training settings and input/code hashes;
-`initialization.json` records copied and reset weights. `training_complete.json`
-contains the completed budget and selected checkpoint. Event HDF5 and cache
-contents are not included in the per-run input hashes.
-
 `test.py` uses the checkpoint's anchors and backend settings, and checks the
 runtime and protocol. Older checkpoints require their matching protocol and
 anchor files. Missing backend flags produce a warning and use the historical
 profile. Older `last.pth` files require their original training runner.
+
+## Resuming training
+
+Repeat the same command and output directory to resume from `last.pth`.
+Use a new output directory when changing code, inputs or training settings.
+See `python transfer/train.py --help` for checkpoint and time-limit options.
 
 ## Tests
 
