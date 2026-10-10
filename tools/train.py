@@ -124,7 +124,7 @@ def main():
         nonlocal stop
         stop = True
 
-    for signum in (signal.SIGTERM, signal.SIGUSR1):
+    for signum in (signal.SIGINT, signal.SIGTERM, signal.SIGUSR1):
         signal.signal(signum, request_stop)
 
     def check_stop():
@@ -282,7 +282,7 @@ def main():
             epoch += 1
             cursor = 0
             save()
-    except (TrainingInterrupted, KeyboardInterrupt):
+    except TrainingInterrupted:
         save()
         print(json.dumps(dict(status='checkpointed_for_resume', epoch=epoch, cursor=cursor, step=step)), flush=True)
         return 75

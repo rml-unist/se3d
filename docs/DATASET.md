@@ -38,7 +38,8 @@ SE3D/
 ├── calib.txt                       # shared by all sequences
 ├── LICENSE, DATASET_LICENSE.md      # dataset MIT license
 ├── DATASET_NOTICE.md                # CARLA attribution and third-party terms
-├── README.md, EXPERIMENTS.md        # data format and experiment protocol
+├── README.md, DATASET.md            # data format
+├── EXPERIMENTS.md                   # experiment protocol
 ├── dataset_manifest.json           # annotation counts and content fingerprints
 ├── splits/                         # sequence and frame splits, identical to this repository
 ├── label_correction_manifest.csv   # per-file record of the label deduplication

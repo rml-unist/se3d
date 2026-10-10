@@ -158,6 +158,7 @@ def main():
             }
             (meta / 'dataset_manifest.json').write_text(json.dumps(public_manifest, indent=2) + '\n')
         shutil.copyfile(REPO_ROOT / 'docs' / 'DATASET.md', meta / 'README.md')
+        shutil.copyfile(REPO_ROOT / 'docs' / 'DATASET.md', meta / 'DATASET.md')
         shutil.copyfile(REPO_ROOT / 'docs' / 'DATASET_LICENSE.md', meta / 'LICENSE')
         shutil.copyfile(REPO_ROOT / 'docs' / 'DATASET_LICENSE.md', meta / 'DATASET_LICENSE.md')
         shutil.copyfile(REPO_ROOT / 'docs' / 'DATASET_NOTICE.md', meta / 'DATASET_NOTICE.md')
