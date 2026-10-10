@@ -1,14 +1,13 @@
-"""Package an already verified public-layout SE3D tree (maintainers only).
+"""Package a public-layout SE3D tree into sequence and metadata archives.
 
 Input is the same layout consumed by tools/train.py and tools/check_dataset.py:
 label/ contains release annotations and label_original/ the historical set.
-Use import_legacy_dataset.py once to convert the archived internal capture.
-
-Each sequence archive includes the dataset MIT license and attribution notice. SE3D_meta.tar.gz holds
-calibration, annotation provenance, license and documentation. Symlinks in a
-working tree are dereferenced; released archives have no external dependency.
+The input includes annotation metadata from the current SE3D_meta.tar.gz.
+Each sequence archive includes the dataset license and attribution notice.
+Symlinks are dereferenced so archives are self-contained.
 """
 import argparse
+import csv
 import fcntl
 import hashlib
 import json
@@ -22,7 +21,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from se3d import REPO_ROOT
 from se3d.protocol import load_splits
-from tools.maintainers.import_legacy_dataset import public_annotation_metadata
 
 FILES = ('timestamps.txt', 'coords.txt', 'speeds.txt', 'disparity/timestamps_with_label.txt',
          'events/left/events.h5', 'events/left/rectify_map.h5',
@@ -37,6 +35,19 @@ def sha256(path):
         for block in iter(lambda: stream.read(1 << 20), b''):
             h.update(block)
     return h.hexdigest()
+
+
+def copy_annotation_metadata(source, target):
+    with source.open() as stream:
+        rows = csv.DictReader(stream) if source.suffix == '.csv' else json.load(stream)
+        for row in rows:
+            parts = row['path'].split('/')
+            if (len(parts) != 4 or any(p in ('', '.', '..') for p in parts)
+                    or parts[-2] != 'label'
+                    or row.get('original_path') != '/'.join(parts[:2] + ['label_original', parts[-1]])):
+                raise ValueError('Annotation metadata must use public paths; '
+                                 'extract the current SE3D_meta.tar.gz: ' + str(source))
+    shutil.copyfile(source, target)
 
 
 def stage_sequence(source, sequence, stage):
@@ -136,7 +147,7 @@ def main():
         meta.mkdir(parents=True)
         shutil.copyfile(source / 'calib.txt', meta / 'calib.txt')
         for name in ('label_correction_manifest.csv', 'car_correction_decisions.json'):
-            (meta / name).write_bytes(public_annotation_metadata(name, (source / name).read_bytes()))
+            copy_annotation_metadata(source / name, meta / name)
         if source_manifest.exists():
             public_manifest = json.loads(source_manifest.read_text())
             public_manifest.pop('source', None)

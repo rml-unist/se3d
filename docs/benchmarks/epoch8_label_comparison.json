@@ -12,9 +12,8 @@
     "Van": 55,
     "Bus": 975
   },
-  "four_arms_same_GT_metadata_depth_pixels": true,
   "evaluation_labels": "label",
-  "checkpoint_rule": "fixed epoch 8; not a 40-epoch baseline",
+  "checkpoint_rule": "fixed epoch 8",
   "comparison_scope": "annotation version and its training-only anchors change together",
   "arms": {
     "EMOD_original": {

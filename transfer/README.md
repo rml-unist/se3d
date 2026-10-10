@@ -115,23 +115,21 @@ metrics_env/bin/python transfer/evaluate_waymo.py results/.../fixed_test_predict
 
 ## Corrected-source seed and label-efficiency experiments
 
-The deferred corrected-source experiment crosses three source seeds
+The corrected-source experiment crosses three source seeds
 (`20260909`, `20260910`, `20260911`) with those same three target optimization
-seeds. Each source is the immutable corrected DSGN-event checkpoint at update
+seeds. Each source is the corrected DSGN-event checkpoint at update
 214,368, which is epoch 8 of the full SE3D training pool. Three scratch runs,
-one per target seed, provide shared references. Record all nine pretrained
-cells; shared source weights and scratch references make these cells correlated.
-Report variation across target seeds conditional on one source seed, and across
-source seeds conditional on one target seed. Do not interpret the nine cells as
-nine independent paired repetitions.
+one per target seed, provide shared references. The nine pretrained runs share
+source weights and scratch references. Summarize source-seed and target-seed
+variation separately, holding the other seed fixed.
 
 Label-efficiency runs use the single fixed corrected source seed `20260909` at
 update 214,368. The same nested subsets are used across the three target seeds
 and both initialization arms. Whole training chunks are ordered by
 `SHA256("se3d-target-label-efficiency-chunks-v1/20261010/" + chunk)`; each subset
 takes the first `ceil(fraction * 126)` chunks in that order. Internal validation
-and test remain the same 434 and 1,178 keyframes. The subset seed and identities
-were fixed before inspecting their annotations.
+and test remain the same 434 and 1,178 keyframes. Subset membership depends
+only on chunk names and the fixed subset seed.
 
 | Nominal labels | Actual labels | Chunks | Frames | Empty frames | Vehicle boxes | Pedestrian boxes | Cyclist boxes |
 |---|---:|---:|---:|---:|---:|---:|---:|
@@ -139,28 +137,25 @@ were fixed before inspecting their annotations.
 | 25% | 25.3968% | 32 | 992 | 261 | 1,848 | 230 | 59 |
 | 50% | 50.0000% | 63 | 1,953 | 410 | 3,828 | 535 | 98 |
 
-Counts describe raw selected training annotations; no empty or difficult frames
-are removed. The small pedestrian count at 10% does not trigger resampling.
-Standard deviations across target seeds measure optimization variation
-conditional on this fixed subset, not uncertainty from sampling other subsets.
+All selected frames, including empty frames, are retained. The 10% subset has
+only four Pedestrian boxes. Standard deviations across target seeds describe
+optimization variation with subset membership fixed.
 
 Both box and disparity supervision use only the selected training frames.
 Anchor dimensions and center heights are recomputed from those frames alone,
-and the scratch/pretrained pair shares the resulting anchor file. Preparation
-and training never open excluded training annotations to obtain these statistics.
-If a class has no raw boxes, the predeclared, source-independent constants in
+and the scratch/pretrained pair shares the resulting anchor file.
+If a class has no raw boxes, the constants in
 [`absent_class_anchors_v1.json`](protocol/absent_class_anchors_v1.json) are used
-only for that class. No fallback is needed for the three frozen subsets above.
-Each anchor record contains the selected annotation/calibration hashes, class
-counts, and fallback hash. Training recomputes these selected-only statistics
-and rejects a mismatched or full-pool anchor file.
+only for that class. No fallback is needed for the three subsets above.
+Training recomputes these statistics and rejects anchors that differ from
+the selected training data.
 
 ```bash
 python transfer/prepare_subsets.py --dsec-root /data/DSEC/train \
     --labels-root /data/DSEC-3DOD --output runs/target_subsets
 
-# SOURCE_SHA256 is the SHA256 of the fixed source checkpoint file.
 SOURCE=/path/to/corrected_dsgn_source_s20260909/step_0214368.pth
+SOURCE_SHA256=$(sha256sum "$SOURCE" | cut -d ' ' -f 1)
 SUBSETS=runs/target_subsets
 DATA=(--dsec-root /data/DSEC/train --labels-root /data/DSEC-3DOD \
       --metrics-python metrics_env/bin/python)
@@ -180,64 +175,41 @@ for FRACTION in 10 25 50; do
 done
 ```
 
-Use `--manifests-only` during subset preparation to freeze identities without
-reading annotations. The 100% reference uses the full-pool command without
+Use `--manifests-only` to write subset lists without reading annotations.
+The 100% reference uses the full-pool command without
 `--subset` or `--anchors`. For the source/target seed matrix, change the source
 checkpoint and `--source-seed` together and retain the same target budget.
 
-Every fraction trains for exactly **62,496 optimizer updates** and has the same
-**16 validation candidates** at multiples of 3,906. Smaller subsets cycle
-deterministically reshuffled permutations until the limit; validation can occur
-inside a data pass. This measures equal update budgets, with more passes over
-smaller subsets. A nonmultiple update limit used for a short check also receives
-a final validation. `--epochs` remains a legacy shorthand based on the full
-training pool; explicit `--updates` and `--validate-every` are preferred.
+Every fraction trains for **62,496 updates**, with **16 validations** at
+multiples of 3,906. Smaller subsets repeat more often under this equal update
+budget. Use `--updates` and `--validate-every` for subset comparisons;
+`--epochs` is a shorthand based on the full training pool.
 
-## Resume and provenance
+## Resuming training
 
-`effective_config.json` binds the source checkpoint SHA/seed/step, target seed,
-protocol and subset hashes, anchor payload, selected train/validation annotation,
-calibration and disparity hashes, code manifest, environment, and update/selection
-rules. `initialization.json` records the seeded model and reset-head tensor hashes
-and the complete copied tensor list. Both training entrypoints set and record
-the same explicit historical backend profile by default. The profile is based
-on archived code and PyTorch 2.5 defaults; it is not a measurement of old runs.
-`--backend-profile reproducible` disables TF32 and requests deterministic cuDNN
-kernels. `--strict-determinism` selects that profile and also errors on
-unsupported operations. Each choice belongs in a separate run configuration.
+Repeat the same command and output directory to resume from `last.pth`.
+It restores the model, optimizer, random-number generators, sample order and
+validation progress. Interrupted validation finishes before the next update.
+Changed code, inputs or settings require a new output directory.
 
-The output directory has an exclusive process lock. `last.pth` saves model,
-optimizer, sampler epoch/cursor, completed updates, validation state, best step,
-and Python/NumPy/Torch/CUDA RNG state. Validation caches retain a contiguous
-prefix and are bound to the model tensor values, ordered rows, anchors and input
-identity. A resumed run completes a pending validation before its next update.
-No cached prefix or metric is reused across changed weights, inputs, or code.
-Validation preserves the training RNG state. The dataset has no stochastic
-augmentation; exact CPU resume tests do not promise bitwise equality across GPU
-models or nondeterministic CUDA kernels.
+`SIGUSR1`, `SIGTERM` or the time limit saves a checkpoint and returns **75**.
+For a 10h30 job, `--max-seconds 37800 --save-margin-seconds 900` requests a save
+15 minutes before the end. Use the actual job time limit; `SLURM_JOB_END_TIME`
+is also accepted as a Unix timestamp. Resubmit with the same command after
+exit 75. `--allocation-updates N` stops after N additional updates for resume
+checks.
 
-`SIGUSR1`, `SIGTERM`, or the job time limit saves a checkpoint at a safe boundary
-and returns **75**. For example, `--max-seconds 37800 --save-margin-seconds 900`
-requests a checkpoint 900 seconds before a 10h30 scheduler job ends. A launcher
-must use the actual remaining job time when the scheduler grants a shorter job;
-`SLURM_JOB_END_TIME`, when supplied, is also honored as Unix seconds. Only the job
-wrapper or operator resubmits; the runner creates no scheduler jobs or watcher.
-`--allocation-updates N` tests resumption after N additional updates. Ordinary errors remain
-failures. `training_complete.json` records the completed budget, all candidate
-steps, selected step, and best/final checkpoint hashes.
+`effective_config.json` records training settings and input/code hashes;
+`initialization.json` records copied and reset weights. `training_complete.json`
+contains the completed budget and selected checkpoint. Event HDF5 and cache
+contents are not included in the per-run input hashes.
 
-`test.py` restores the checkpoint's backend settings before initializing CUDA,
-uses its embedded anchors, and rejects a changed runtime or protocol. Detection
-and depth use the same checkpoint and fixed keyframes. Its evaluation record
-includes the effective backend settings and where they came from.
-Legacy checkpoints use their matching original protocol/anchor files and are
-marked as legacy in the evaluation record. If their backend flags were not
-recorded, inference warns and records its assumption of the historical profile.
-Their old `last.pth` files require
-their original runner; the new runtime does not silently adopt them. Reuse of
-historical results in a new comparison requires a separate equivalence audit.
-Event HDF5/cache contents require their own preparation and a comparison of raw
-and cached inputs; the per-job annotation/depth check does not hash all event bytes.
+`test.py` uses the checkpoint's anchors and backend settings, and checks the
+runtime and protocol. Older checkpoints require their matching protocol and
+anchor files. Missing backend flags produce a warning and use the historical
+profile. Older `last.pth` files require their original training runner.
+
+## Tests
 
 The CPU tests require the repository's PyTorch environment and no GPU or Waymo
 installation:
@@ -246,11 +218,8 @@ installation:
 CUDA_VISIBLE_DEVICES='' python -m unittest discover -s transfer/tests -v
 ```
 
-They cover nested identities, excluded-label isolation and absent-class fallback,
-source/head guards, embedded-anchor inference, and exact optimizer/RNG/sample
-order equality across interrupted training and partial validation, plus backend
-restoration from checkpoints. A separate GPU check must exercise DSEC
-forward/backward and the official Waymo evaluator before full training.
+These check subset selection, anchors, source initialization, backend settings
+and interrupted training/validation with small CPU models.
 
 ## Historical results in the paper (Table VI)
 
@@ -277,13 +246,9 @@ source trained on the deduplicated SE3D annotations (V/P AP 6.25%, MAE 0.814 px)
 For this comparison, train the source model with
 `python tools/train.py --model dsgn_event --data-root /data/SE3D --labels label --updates 214368 --keep-updates 214368 --output runs/se3d_dsgn_event_label_8ep`,
 then pass `--source runs/se3d_dsgn_event_label_8ep/step_0214368.pth` to a new target
-run. The table and supplementary score above remain historical results; this
-command alone does not establish equivalence to their original frozen runtime.
-
-Scores obtained on another GPU type differ slightly from these (in our checks,
-box coordinates by about 1e-3 m and scores by about 1e-4 on identical inputs).
-The single-seed experiment on the interpolated 100-Hz annotations
-(Suppl. Sec. 7.3) uses a separate two-GPU runner and is not included here.
+run. The [historical reproduction limits](../docs/EXPERIMENTS.md#historical-paper-protocol-tables-iv-and-v)
+also apply to these results. The supplementary experiment on interpolated
+100-Hz annotations (Sec. 7.3) is not included here.
 
 ## Third-party code
 

@@ -62,14 +62,11 @@ where a `_1` suffix marks a second sequence recorded in the same town and
 condition. Per-frame files are named by frame number; in sorted order, the i-th
 file of each folder belongs to the i-th line of `timestamps.txt`.
 
-The metadata refresh dated 2026-10-10 updates `SE3D_meta.tar.gz`, `manifest.json`
-and `SHA256SUMS` in the same download folder. The 58 sequence archives already
-contain `label/` and `label_original/`, and their bytes and hashes are unchanged.
-Existing users can download the refreshed metadata archive and checksum files
-and extract the metadata into their existing dataset. The correction CSV and
-Car decisions now use public paths: `path` names the corrected `label/` file,
-and `original_path` names its `label_original/` counterpart. Annotation bytes
-and the correction decisions are unchanged.
+The 2026-10-10 metadata update adds license notices and public annotation paths.
+Existing users can update `SE3D_meta.tar.gz`, `manifest.json` and `SHA256SUMS`;
+the sequence archives are unchanged. In the correction CSV and Car decisions,
+`path` names the corrected `label/` file and `original_path` its
+`label_original/` counterpart.
 
 ## File formats
 
@@ -100,12 +97,10 @@ a larger box of the same parked car. The deduplicated set has Car 95,270,
 Pedestrian 28,273, Bicycle 13,308, Motorcycle 21,448, Truck 7,394, Van 4,277 and
 Bus 5,153 boxes.
 
-Every public command uses these same two directory names with `--labels`.
-Internal numbered annotation directories are accepted only by the maintainer
-importer; they are not runtime inputs. New training uses corrected validation
-and Moderate AP40 selection even for an original-label comparison run. Both
-annotation versions are retained so that the historical experiments remain
-identifiable.
+Use `--labels label` (default) or `--labels label_original` to select annotations.
+Training defaults to corrected validation labels and Moderate AP40 selection;
+the [historical training commands](EXPERIMENTS.md#historical-paper-protocol-tables-iv-and-v)
+set original validation labels and AP11 explicitly.
 
 Difficulty levels follow KITTI with SE3D thresholds and no truncation limit:
 
@@ -141,8 +136,7 @@ several splits under different conditions.
 
 The validation split has no Bus instances and no nighttime sunny frames.
 Validation mAP40 therefore averages the six classes with valid Moderate GT;
-test mAP40 averages seven. A shared metric definition does not make these two
-means interchangeable. The night-rain test contains seven Car boxes and the
+test mAP40 averages seven. The night-rain test contains seven Car boxes and the
 night-heavy-rain test none; interpret class-specific AP with those counts.
 
 ## Storage and event caches
@@ -172,9 +166,7 @@ python tools/train.py --model emod --data-root /data/SE3D \
 
 Use the same `--cache-root` for testing. Without it, caches are stored next to
 the events; complete existing caches can be read without write access. Cache
-files are not included in the dataset archives. `--cache-time-bounds` is for
-maintainers with a verified cache-only copy and its matching time-bound
-metadata; ordinary downloads contain the raw events and do not need it.
+files are not included in the dataset archives.
 
 ## License
 
@@ -182,9 +174,7 @@ The SE3D authors' rights in the sensor recordings, annotations, calibration,
 splits and documentation are released under the [MIT License](DATASET_LICENSE.md).
 CARLA assets retain their upstream terms; preserve the
 [CARLA attribution notice](DATASET_NOTICE.md) with the dataset license.
-These notices accompany the existing `SE3D_v2` archives as well as new
-packaging. The refreshed `SE3D_meta.tar.gz` includes `SE3D/LICENSE`,
+`SE3D_meta.tar.gz` includes `SE3D/LICENSE`,
 `SE3D/DATASET_LICENSE.md` and `SE3D/DATASET_NOTICE.md`.
 Redistribute the metadata archive with any sequence archives, or include the
-notices alongside extracted recordings. Newly packaged sequence archives also
-carry `SE3D/LICENSE` and `SE3D/DATASET_NOTICE.md` directly.
+notices alongside extracted recordings.

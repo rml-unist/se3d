@@ -9,10 +9,9 @@ across eight CARLA towns.
 
 This repository contains the data splits, the evaluation code, the two joint
 baselines (EMOD and DSGN-event) and the transfer experiments on DSEC-3DOD.
-The manuscript is under review. The tables below preserve its historical
-experiments; the new release study uses corrected labels and consistent AP40
-model selection, as specified in [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md).
-Results from that study are pending.
+The tables below report the manuscript's historical experiments.
+[docs/EXPERIMENTS.md](docs/EXPERIMENTS.md) documents those protocols and
+training with corrected annotations and AP40 model selection.
 
 | Folder | Contents |
 |---|---|
@@ -24,7 +23,6 @@ Results from that study are pending.
 | `transfer/` | scratch vs. SE3D-initialized training on DSEC-3DOD ([transfer/README.md](transfer/README.md)) |
 | `docs/DATASET.md` | sensors, file formats, annotations and splits |
 | `docs/EXPERIMENTS.md` | annotation versions, model selection, seeds and experiment budgets |
-| `docs/STRUCTURE.md` | runtime components and maintainer tools |
 
 ## Download
 
@@ -35,11 +33,9 @@ and the [weights folder](https://drive.google.com/drive/folders/1MwzAA26ub8axup1
   `SE3D_meta.tar.gz` and `SHA256SUMS`. All archives unpack into `SE3D/`.
 - `weights/`: the checkpoints listed [below](#checkpoints), with `SHA256SUMS`.
 
-The metadata refresh dated **2026-10-10** adds the dataset MIT license,
-public annotation-provenance paths, annotation fingerprints, splits and the
-current experiment protocol to `SE3D_meta.tar.gz`. Existing users only need to
-replace and extract that metadata archive and refresh `manifest.json` and
-`SHA256SUMS`; the 58 sequence archives retain their existing hashes.
+If you downloaded the dataset before **2026-10-10**, update and extract
+`SE3D_meta.tar.gz` for the license and annotation metadata, and replace
+`manifest.json` and `SHA256SUMS`. The sequence archives are unchanged.
 
 The complete dataset download is **432.6 GB** (decimal GB), across 58 sequence
 archives and one metadata archive; extraction occupies about **1.06 TB**.
@@ -84,9 +80,8 @@ python tools/quick_check.py --data-root /data/SE3D --model dsgn_event
 # Optional: add --checkpoint weights/se3d_dsgn_event_40ep.pth
 ```
 
-This reads two test frames and checks inference; it is not a benchmark score.
-`python tools/check_protocol.py` runs without data or a GPU. CI checks the
-split/anchor protocol, annotation-name handling and Python syntax.
+This runs inference on two test frames. `python tools/check_protocol.py`
+checks the split and anchor files without data or a GPU.
 
 ## Benchmark
 
@@ -152,15 +147,10 @@ seven boxes; night-heavy-rain has no Car GT and its AP is undefined (–).
 The validation split contains neither Bus nor night-sunny examples, which
 limits what checkpoint selection can measure. The split is kept fixed.
 The historical Sun model used 105 passes over 10,233 sunny training frames
-and AP11 selection on the sunny validation subset. Thus its training and
-selection conditions both differed from All. The new study fixes the exact
-update budget and shares full-condition validation across these arms.
+and AP11 selection on the sunny validation subset.
 
-A completed, matched **8-epoch annotation comparison** is available in
+A matched **8-epoch, one-seed annotation comparison** is available in
 [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md#earlier-annotation-comparison).
-It is a one-seed study and does not replace the pending three-seed, 40-epoch
-corrected-label baselines. Historical source results do not establish a
-retraining tolerance; the target-seed variation below is a separate measure.
 
 ### Test a checkpoint
 
@@ -172,11 +162,8 @@ python tools/test.py --model emod --checkpoint weights/se3d_emod_40ep.pth \
 ```
 
 `results/<name>/metrics.json` holds the full report and `predictions.pkl` the
-per-frame boxes (`--save-kitti` also writes KITTI files). The anchor sizes used
-in training are selected from the checkpoint. On an RTX 3090 these commands
-gave the table values within 0.02 AP in the release inference check (GPU arithmetic differs slightly from the
-A100 used for the paper); the disparity metrics agree to the third decimal.
-This is an inference comparison using fixed weights, not training variance.
+per-frame boxes (`--save-kitti` also writes KITTI files). Anchor sizes and
+backend settings are loaded from the checkpoint.
 
 ### Train
 
@@ -198,16 +185,14 @@ python tools/train.py --model emod --data-root /data/SE3D \
     --epochs 105 --seed 20260909 --output runs/hist_emod_sunny
 ```
 
-These reproduce the recorded training protocol with the maintained runner.
-The historical backend profile reconstructs PyTorch 2.5 defaults from the
-archived code; the original runs did not record their effective backend flags.
-Identical trained weights or scores are therefore not guaranteed. See the
-[historical protocol and limitations](docs/EXPERIMENTS.md#historical-paper-protocol-tables-iv-and-v).
+These commands match the historical data and selection rules. Retraining can
+differ because the original backend settings were not fully recorded; see
+[reproduction details](docs/EXPERIMENTS.md#historical-paper-protocol-tables-iv-and-v).
 
-The new release study uses the following commands:
+For training with corrected annotations and AP40 selection:
 
 ```bash
-# New baselines: release labels for both training and validation (the default)
+# Corrected labels for training and validation (the default)
 python tools/train.py --model emod --data-root /data/SE3D \
     --backend-profile historical --seed 20260909 --output runs/emod_s20260909
 python tools/train.py --model dsgn_event --data-root /data/SE3D \
@@ -218,37 +203,29 @@ python tools/train.py --model emod --data-root /data/SE3D \
     --backend-profile historical --seed 20260909 --output runs/emod_sunny_s20260909
 ```
 
-Training uses batch size 1, Adam with a learning rate and weight decay of 1e-4,
-no augmentation, and the loss 0.5 × depth + 0.5 × detection. After each epoch
-the model is evaluated on the corrected validation split; `best.pth` has the
-highest Moderate 3D mAP40 over GT-present classes, with the earliest update
-winning a tie. This one checkpoint is used for both test tasks. An interrupted
-run resumes its optimizer, RNG and data cursor from `last.pth` when the same
-command is repeated. One all-condition epoch has 26,796 updates; 40 epochs
-have 1,071,840. The fixed 214,368-update source snapshot is kept separately.
-Repeat with seeds 20260910 and 20260911 for the release study.
+These runs use batch size 1, Adam with learning rate and weight decay 1e-4,
+no augmentation, and loss 0.5 × depth + 0.5 × detection. They train for
+1,071,840 updates and validate every 26,796 updates. `best.pth` has the highest
+validation Moderate 3D mAP40 over classes with ground truth; ties keep the
+earliest update. Use it for both test tasks. Repeating an interrupted command
+resumes from `last.pth`. The [full protocol](docs/EXPERIMENTS.md) lists seeds,
+comparison runs and saved intermediate checkpoints.
 
-All commands use `--labels label|label_original`; new validation defaults to
-`label` even in the original-label control. `--validation-labels` and
-`--selection-metric` make alternative protocols explicit. The historical
-tables above used a different selection rule. See the complete
-[experiment protocol](docs/EXPERIMENTS.md) before comparing runs.
+`--labels label|label_original` selects the training annotations. Validation
+defaults to `label`; change it with `--validation-labels` and select AP11 or
+AP40 with `--selection-metric`.
 
-Source and transfer training share `--backend-profile historical|reproducible`.
-The release study explicitly uses `historical` for every arm; this controls
-numerical settings independently of the label and validation choices.
-Inference restores the settings recorded in new checkpoints. The
+Source and transfer training share `--backend-profile historical|reproducible`
+(default: `historical`). See the
 [backend settings table](docs/EXPERIMENTS.md#backend-settings-and-determinism)
-explains the optional reproducible profile and strict error checking.
+for TF32 and determinism options.
 
 Both models fit on a 24-GB GPU (historical peak allocated memory about 14 GB).
 Historical A100 runs took about 31.9 GPU-hours for EMOD and 30.0 for DSGN-event
-at eight epochs, including job startup, data loading and validation. Scaling those
-measurements gives roughly 160 and 150 GPU-hours per 40-epoch run, respectively;
-these are historical-profile planning estimates, exclude queue time and are
-not upper bounds. Disabling TF32 or requesting deterministic kernels can be
-slower; the estimates do not cover `reproducible` or strict mode. New A100
-update and validation timings must be measured before revising the forecast.
+at eight epochs, including startup, data loading and validation. Linear scaling
+estimates about 160 and 150 GPU-hours for 40 epochs, excluding queue time.
+These estimates are not upper bounds and apply to the historical profile;
+`reproducible` and strict mode may be slower and have not been timed.
 
 Event stacks are computed from `events.h5` the first time a frame is read and
 stored next to the events (about 3 MB per frame). `tools/prepare_event_cache.py`
@@ -294,8 +271,6 @@ checkpoints for transfer learning. SHA256 sums are in `weights/SHA256SUMS`.
 
 These four published files were trained with `label_original/`. The historical
 sunny-only and corrected-label checkpoints are not in that public folder.
-New release-study checkpoints and their hashes will be added after their
-training and evaluation have been verified.
 
 ## Citation
 
