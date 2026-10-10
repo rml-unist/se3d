@@ -1,24 +1,13 @@
-"""Paired target training on DSEC-3DOD: scratch versus SE3D initialization.
+"""Paired DSEC-3DOD transfer with a fixed optimizer-update/validation budget.
 
-Both arms of a pair use the same architecture, target data, 16 epochs
-(62,496 updates), batch size 1, Adam (lr 1e-4, weight decay 1e-4), no
-augmentation and the same seed. The SE3D arm copies every tensor of the SE3D
-checkpoint except the detection prediction layers, which keep their seeded
-initialization. After every epoch the model is scored on the 434 internal
-validation keyframes; best.pth keeps the epoch with the highest V/P Level-2 AP
-(lowest disparity MAE for SE-CFF).
+Default: 62,496 updates, validation every 3,906 updates (16 candidates),
+batch size 1, Adam 1e-4/weight decay 1e-4, no augmentation. Smaller labeled
+subsets cycle their own seeded permutations under the identical update budget.
+Only validation selects best.pth; exact ties retain the earlier candidate.
 
-    # DSGN-event, seed 20260909 (the paper also uses 20260910 and 20260911)
-    python transfer/train.py --model dsgn_event --init scratch --seed 20260909 --output runs/dsec_dsgn_scratch_s0909 ...
-    python transfer/train.py --model dsgn_event --init se3d --source weights/se3d_dsgn_event_8ep.pth \
-        --seed 20260909 --output runs/dsec_dsgn_se3d_s0909 ...
-    # EMOD and SE-CFF (both initialized from the 8-epoch EMOD checkpoint)
-    python transfer/train.py --model emod   --init se3d --source weights/se3d_emod_8ep.pth --output ... ...
-    python transfer/train.py --model se_cff --init se3d --source weights/se3d_emod_8ep.pth --output ... ...
-
-Common arguments: --dsec-root <DSEC>/train --labels-root <DSEC-3DOD> [--cache-root <cache>]
---metrics-python <python of the metrics environment> (not needed for se_cff).
-An interrupted run restarts from last.pth with the same command.
+Resume with the same command. SIGUSR1/SIGTERM or an allocation time/update
+limit saves last.pth and partial validation, then exits 75. A job wrapper may
+resubmit this status. final.pth and training_complete.json mark full completion.
 """
 import argparse
 import json
@@ -27,150 +16,232 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import common  # noqa: E402
+try:
+    from . import common, protocol_utils as protocol, runtime
+except ImportError:
+    import common
+    import protocol_utils as protocol
+    import runtime
 
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
+from se3d.backends import add_backend_arguments, configure_backend  # noqa: E402
 
 
-def atomic_save(obj, path):
-    temporary = path.with_suffix('.tmp')
-    torch.save(obj, temporary)
-    temporary.replace(path)
-
-
-def main():
+def arguments(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--model', choices=common.MODELS, required=True)
     parser.add_argument('--init', choices=['scratch', 'se3d'], required=True)
     parser.add_argument('--source', help='SE3D checkpoint for --init se3d')
-    parser.add_argument('--dsec-root', required=True, help='DSEC train/ directory (events, disparity, calibration)')
-    parser.add_argument('--labels-root', required=True, help='DSEC-3DOD directory with <chunk>/<chunk>_fov_bbox_lidar_check.pkl')
-    parser.add_argument('--cache-root', default=None, help='event stacks from prepare_cache.py (optional)')
-    parser.add_argument('--metrics-python', default=None, help='python of the metrics environment')
+    parser.add_argument('--source-sha256', help='require this immutable source checkpoint hash')
+    parser.add_argument('--source-seed', type=int, help='require this source training seed')
+    parser.add_argument('--source-step', type=int, help='require this source optimizer step (new matrix: 214368)')
+    parser.add_argument('--dsec-root', required=True, help='DSEC train/ directory')
+    parser.add_argument('--labels-root', required=True, help='DSEC-3DOD annotation directory')
+    parser.add_argument('--cache-root', help='event stacks from prepare_cache.py')
+    parser.add_argument('--metrics-python', help='interpreter with official Waymo CPU metrics')
     parser.add_argument('--output', required=True)
-    parser.add_argument('--epochs', type=int, default=16)
-    parser.add_argument('--seed', type=int, default=20260909)
+    parser.add_argument('--protocol', default=str(protocol.PROTOCOL))
+    parser.add_argument('--subset', help='frozen subset.json from prepare_subsets.py')
+    parser.add_argument('--anchors', help='subset anchors.json; required with --subset')
+    parser.add_argument('--fallback', default=str(protocol.FALLBACK))
+    parser.add_argument('--epochs', type=int, help='legacy budget shorthand: epochs times the full train pool')
+    parser.add_argument('--updates', type=int, help='exact optimizer budget; default 62496')
+    parser.add_argument('--validate-every', type=int, help='optimizer updates between validations; default 3906')
+    parser.add_argument('--seed', type=int, default=20260909, help='target optimization seed')
     parser.add_argument('--workers', type=int, default=2)
-    parser.add_argument('--limit-train', type=int, default=None, help='debug: keyframes per epoch')
-    parser.add_argument('--limit-val', type=int, default=None, help='debug: validation keyframes')
-    args = parser.parse_args()
+    parser.add_argument('--device', choices=['cuda', 'cpu'], default='cuda', help='CPU is for small runtime gates')
+    add_backend_arguments(parser)
+    parser.add_argument('--save-every', type=int, default=200)
+    parser.add_argument('--keep-updates', nargs='*', type=int, default=[])
+    parser.add_argument('--max-seconds', type=float, default=0, help='allocation wall budget, including startup; 0 disables')
+    parser.add_argument('--save-margin-seconds', type=float, default=600)
+    parser.add_argument('--allocation-updates', type=int, default=0, help='checkpoint and exit after N more updates; 0 disables')
+    parser.add_argument('--limit-train', type=int, help='debug: cap each selected-pool permutation')
+    parser.add_argument('--limit-val', type=int, help='debug: restrict validation keyframes')
+    args = parser.parse_args(argv)
     if args.init == 'se3d' and not args.source:
         parser.error('--init se3d requires --source')
-    detection = args.model != 'se_cff'
-    if detection and not args.metrics_python:
+    if args.init == 'scratch' and any(value is not None for value in
+                                    (args.source, args.source_sha256, args.source_seed, args.source_step)):
+        parser.error('Scratch runs cannot specify source checkpoint arguments')
+    if args.model != 'se_cff' and not args.metrics_python:
         parser.error('--metrics-python is required to select detection checkpoints')
+    if args.subset and not args.anchors:
+        parser.error('--subset requires its own --anchors receipt')
+    if args.updates is not None and args.epochs is not None:
+        parser.error('Specify --updates or the legacy --epochs shorthand, not both')
+    for field in ('updates', 'epochs', 'validate_every', 'limit_train', 'limit_val', 'source_step'):
+        if getattr(args, field) is not None and getattr(args, field) <= 0:
+            parser.error('--' + field.replace('_', '-') + ' must be positive')
+    if args.workers < 0 or args.save_every <= 0 or args.allocation_updates < 0:
+        parser.error('Invalid worker/checkpoint/update-limit argument')
+    if args.strict_determinism and args.backend_profile == 'historical':
+        parser.error('--strict-determinism cannot be combined with --backend-profile historical')
+    return args
 
-    common.configure()
-    run = Path(args.output)
-    run.mkdir(parents=True, exist_ok=True)
-    config = dict(model=args.model, init=args.init, epochs=args.epochs, seed=args.seed, batch_size=1, optimizer='Adam',
-                  learning_rate=1e-4, weight_decay=1e-4, augmentation='none',
+
+def source_checkpoint(args):
+    if args.init == 'scratch':
+        return None, None
+    digest = protocol.sha256(args.source)
+    if args.source_sha256 and digest != args.source_sha256:
+        raise ValueError('Source checkpoint SHA256 differs from the frozen source')
+    state = torch.load(args.source, map_location='cpu', weights_only=False)
+    if protocol.sha256(args.source) != digest:
+        raise ValueError('Source checkpoint changed while it was being loaded')
+    config = state.get('config', {})
+    seed, step = config.get('seed'), state.get('step')
+    if args.source_seed is not None and seed != args.source_seed:
+        raise ValueError('Source seed mismatch (or missing source seed metadata)')
+    if args.source_step is not None and step != args.source_step:
+        raise ValueError('Source update mismatch (or missing source step metadata)')
+    expected_model = 'emod' if args.model == 'se_cff' else args.model
+    # Historical checkpoints used descriptive labels. The complete shared-key
+    # and shape check in initialize_from_se3d still verifies the architecture.
+    declared_model = config.get('model', expected_model)
+    aliases = {'DSGN-event adaptation': 'dsgn_event', 'DSGN-event': 'dsgn_event', 'EMOD': 'emod'}
+    if aliases.get(declared_model, declared_model) != expected_model:
+        raise ValueError('Source checkpoint model differs from the target architecture')
+    return state, dict(checkpoint_sha256=digest, source_seed=seed, source_step=step,
+                       source_epoch=state.get('epoch'), source_config=config,
+                       source_config_sha256=protocol.json_digest(config))
+
+
+def prepare_inputs(args):
+    base, subset, rows = protocol.select_train_rows(args.protocol, args.subset)
+    for split, expected in common.SPLIT_SIZES.items():
+        if len(base['splits'][split]) != expected:
+            raise ValueError('Transfer protocol has a different ' + split + ' size')
+    anchors_path = Path(args.anchors) if args.anchors else common.ANCHORS
+    anchors = json.loads(anchors_path.read_text())
+    protocol.validate_anchor_dimensions(anchors)
+    if subset is not None:
+        expected = protocol.derive_subset_anchors(base, protocol.sha256(args.protocol), subset,
+                                                  protocol.sha256(args.subset), args.dsec_root,
+                                                  args.labels_root, args.fallback)
+        if anchors != expected:
+            raise ValueError('Subset anchors do not match selected-only training labels and frozen fallback')
+    elif anchors != json.loads(common.ANCHORS.read_text()):
+        raise ValueError('The full-pool protocol uses the frozen full-pool target anchors')
+    val_rows = base['splits']['validation'][:args.limit_val]
+    inputs = {name: protocol.audit_input_files(values, base, args.dsec_root, args.labels_root)
+              for name, values in [('train', rows), ('validation', val_rows)]}
+    return base, subset, rows, anchors_path, anchors, inputs
+
+
+def run(args, budget):
+    output = Path(args.output)
+    backend = configure_backend(args.backend_profile, args.strict_determinism)
+    base, subset, rows, anchors_path, anchors, inputs = prepare_inputs(args)
+    common.configure(anchors)
+    source, source_info = source_checkpoint(args)
+    code = runtime.code_fingerprint(common.REPO_ROOT)
+    train_size = len(base['splits']['train'])
+    legacy_cycle = min(train_size, args.limit_train) if args.limit_train else train_size
+    # An explicit --epochs retains short historical debug budgets. The new matrix
+    # always passes --updates/--validate-every, including for smaller label subsets.
+    updates = args.updates if args.updates is not None else (args.epochs * legacy_cycle if args.epochs else 62496)
+    interval = args.validate_every if args.validate_every is not None else (legacy_cycle if args.epochs else 3906)
+    candidates = runtime.validation_steps(updates, interval)
+    detection = args.model != 'se_cff'
+    config = dict(schema=runtime.SCHEMA, model=args.model, init=args.init, seed=args.seed, batch_size=1,
+                  optimizer='Adam', learning_rate=1e-4, weight_decay=1e-4, augmentation='none',
                   loss_weights=[.5, .5] if detection else 'SE-CFF weighted pyramid SmoothL1, valid-pixel mean',
                   deform_offset_learning_rate=None if detection else 1e-5,
-                  training_pool_frames=3906, validation_frames=434, test_frames=1178,
+                  optimizer_updates=updates, validate_every=interval, validation_steps=candidates,
+                  training_pool_frames=train_size, training_frames=len(rows),
+                  validation_frames=len(base['splits']['validation'][:args.limit_val]), test_frames=len(base['splits']['test']),
                   selection='Max validation mean Vehicle/Pedestrian official L2 AP; earliest tie' if detection
                   else 'Minimum validation disparity MAE; earliest tie',
-                  protocol_sha256=common.sha256(common.PROTOCOL), anchors_sha256=common.sha256(common.ANCHORS),
-                  pretrained_checkpoint_sha256=common.sha256(args.source) if args.init == 'se3d' else None,
-                  limit_train=args.limit_train, limit_val=args.limit_val, torch=torch.__version__)
-    config_path = run / 'effective_config.json'
-    text = json.dumps(config, indent=2) + '\n'
-    if config_path.exists() and config_path.read_text() != text:
-        raise RuntimeError('%s holds a run with a different configuration' % run)
-    config_path.write_text(text)
-
+                  sampler='torch.randperm(selected_frames, seed + data_epoch), cycle until update limit',
+                  protocol_sha256=protocol.sha256(args.protocol),
+                  subset_sha256=protocol.sha256(args.subset) if args.subset else None,
+                  subset=subset, anchors_sha256=protocol.sha256(anchors_path),
+                  anchor_payload_sha256=protocol.json_digest(anchors), source=source_info,
+                  input_hashes={name: dict(rows_sha256=value['rows_sha256'], files_sha256=value['files_sha256'])
+                                for name, value in inputs.items()}, code_sha256=code['sha256'],
+                  environment=runtime.environment(), metrics_environment=runtime.metrics_environment(args.metrics_python),
+                  device=args.device, workers=args.workers, backend=backend,
+                  strict_determinism=args.strict_determinism,
+                  limit_train=args.limit_train, limit_val=args.limit_val,
+                  keep_updates=sorted(set(args.keep_updates)))
+    runtime.ensure_identity(output / 'effective_config.json', config)
+    runtime.ensure_identity(output / 'code_manifest.json', code)
+    runtime.ensure_identity(output / 'input_manifest.json', inputs)
+    runtime.ensure_identity(output / 'anchors.json', anchors)
+    budget.check()
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    torch.cuda.manual_seed_all(args.seed)
-    model = common.build_model(args.model).cuda()
-    last = run / 'last.pth'
-    if args.init == 'se3d' and not last.exists():
-        copied = common.initialize_from_se3d(model, args.model, args.source)
-        (run / 'transfer_tensors.json').write_text(json.dumps(copied, indent=2) + '\n')
-    if detection:
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-4)
-    else:  # SE-CFF: lr 1e-4, and 1e-5 for the deformable-convolution offsets
-        optimizer = torch.optim.Adam(model.get_params_group(1e-4), weight_decay=1e-4)
-    epoch = cursor = step = 0
-    best = -float('inf')
-    if last.exists():
-        state = torch.load(last, map_location='cuda', weights_only=False)
-        if state['config'] != config:
-            raise RuntimeError('last.pth belongs to a different configuration')
-        model.load_state_dict(state['model'], strict=True)
-        optimizer.load_state_dict(state['optimizer'])
-        epoch, cursor, step, best = state['epoch'], state['cursor'], state['step'], state['best']
-        torch.set_rng_state(state['torch_rng'].cpu())
-        torch.cuda.set_rng_state_all([s.cpu() for s in state['cuda_rng']])
-        random.setstate(state['python_rng'])
-        np.random.set_state(state['numpy_rng'])
-    roots = dict(dsec_root=args.dsec_root, labels_root=args.labels_root, cache_root=args.cache_root)
-    train = common.dataset('train', generate_target=detection, **roots)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(args.seed)
+    model = common.build_model(args.model).to(args.device)
+    initial = model.state_dict()
+    prefixes = common.RESET_PREFIXES[args.model]
+    reset = {name: value for name, value in initial.items() if name.startswith(prefixes)}
+    initialization = dict(seed=args.seed, reset_prefixes=list(prefixes), reset_tensors=sorted(reset),
+                          seeded_model_sha256=runtime.tensor_state_sha256(initial),
+                          seeded_reset_tensors_sha256=runtime.tensor_state_sha256(reset))
+    copied = []
+    if source is not None:
+        copied = common.initialize_from_se3d(model, args.model, source_state=source['model'])
+        after = {name: value for name, value in model.state_dict().items() if name.startswith(prefixes)}
+        if runtime.tensor_state_sha256(after) != initialization['seeded_reset_tensors_sha256']:
+            raise ValueError('Source initialization changed a seeded target prediction head')
+    initialization.update(copied_tensors=copied, initialized_model_sha256=runtime.tensor_state_sha256(model.state_dict()),
+                          source_checkpoint_sha256=source_info['checkpoint_sha256'] if source_info else None)
+    del source, initial, reset
+    runtime.ensure_identity(output / 'initialization.json', initialization)
+    runtime.ensure_identity(output / 'transfer_tensors.json', copied)
+    optimizer = torch.optim.Adam(model.parameters() if detection else model.get_params_group(1e-4),
+                                 lr=1e-4, weight_decay=1e-4)
+    roots = dict(dsec_root=args.dsec_root, labels_root=args.labels_root, cache_root=args.cache_root,
+                 protocol_path=args.protocol)
+    train = common.dataset('train', generate_target=detection, train_rows=rows, **roots)
     validation = common.dataset('validation', generate_target=False, **roots)
-    if args.limit_val:
-        validation.rows = validation.rows[:args.limit_val]
-
-    def save():
-        atomic_save(dict(model=model.state_dict(), optimizer=optimizer.state_dict(), epoch=epoch, cursor=cursor,
-                         step=step, best=best, torch_rng=torch.get_rng_state(), cuda_rng=torch.cuda.get_rng_state_all(),
-                         python_rng=random.getstate(), numpy_rng=np.random.get_state(), config=config), last)
-
+    validation.rows = validation.rows[:args.limit_val]
     from se3d.data import model_args
     from se3d.engine import loader
-    while epoch < args.epochs:
-        model.train()
-        order = torch.randperm(len(train), generator=torch.Generator().manual_seed(args.seed + epoch)).tolist()
-        if args.limit_train:
-            order = order[:args.limit_train]
-        for batch in loader(train, order[cursor:], args.workers, args.seed + epoch):
-            optimizer.zero_grad(set_to_none=True)
-            if detection:
-                _, _, depth_loss, detection_loss = model(**model_args(batch))
-                loss = .5 * depth_loss.mean() + .5 * detection_loss
-            else:
-                _, loss_vector = model(**common.depth_args(batch))
-                loss = loss_vector.mean() if loss_vector.numel() else loss_vector.sum()
-            if not torch.isfinite(loss):
-                raise ValueError('Nonfinite target training loss at step %d' % step)
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), float('inf'), error_if_nonfinite=True)
-            optimizer.step()
-            cursor += 1
-            step += 1
-            if step % 20 == 0:
-                record = dict(epoch=epoch + 1, cursor=cursor, total=len(train), step=step, loss=float(loss.detach()))
-                if detection:
-                    record.update(depth_loss=float(depth_loss.mean().detach()), detection_loss=float(detection_loss.detach()))
-                print(json.dumps(record), flush=True)
-                with (run / 'training.jsonl').open('a') as f:
-                    f.write(json.dumps(record) + '\n')
-            if step % 200 == 0:
-                save()
-        save()
-        tag = 'validation_epoch_%03d' % (epoch + 1)
+
+    def compute_loss(batch):
         if detection:
-            result = common.evaluate_detection(model, validation, args.workers, run, tag, args.metrics_python)
+            _, _, depth_loss, detection_loss = model(**model_args(batch, device=args.device))
+            loss = .5 * depth_loss.mean() + .5 * detection_loss
+            return loss, dict(depth_loss=float(depth_loss.mean().detach()), detection_loss=float(detection_loss.detach()))
+        _, loss_vector = model(**common.depth_args(batch, device=args.device))
+        return (loss_vector.mean() if loss_vector.numel() else loss_vector.sum()), {}
+
+    def validate(step, check_stop):
+        tag = 'validation_step_%07d' % step
+        context = dict(config_sha256=protocol.json_digest(config), validation_inputs=config['input_hashes']['validation'],
+                       step=step, code_sha256=config['code_sha256'])
+        if detection:
+            result = common.evaluate_detection(model, validation, args.workers, output, tag, args.metrics_python,
+                                               context=context, check_stop=check_stop, device=args.device)
             score = result['selection_vehicle_pedestrian_L2_AP']
         else:
-            result = common.evaluate_depth(model, validation, args.workers, run, tag)
-            score = -result['depth']['MAE']
-        if not np.isfinite(score):
-            raise ValueError('Undefined model selection after epoch %d' % (epoch + 1))
-        result.update(epoch=epoch + 1, step=step)
-        (run / ('%s_metrics.json' % tag)).write_text(json.dumps(result, indent=2) + '\n')
-        if score > best:
-            best = score
-            atomic_save(dict(model=model.state_dict(), epoch=epoch + 1, validation_score=best, config=config),
-                        run / 'best.pth')
-        epoch += 1
-        cursor = 0
-        save()
-    summary = dict(epochs=epoch, steps=step)
-    summary['best_validation_L2_AP' if detection else 'best_validation_MAE'] = best if detection else -best
-    (run / 'training_complete.json').write_text(json.dumps(summary, indent=2) + '\n')
+            result = common.evaluate_depth(model, validation, args.workers, output, tag, context=context,
+                                           check_stop=check_stop, device=args.device)
+            score = -result['depth']['MAE'] if result['depth']['MAE'] is not None else float('nan')
+        return result, score
+
+    return runtime.train_loop(model, optimizer, output, config, anchors, initialization,
+                              lambda indices, epoch: loader(train, indices, args.workers, args.seed + epoch),
+                              compute_loss, validate, budget.check, args.save_every, args.keep_updates,
+                              args.allocation_updates)
+
+
+def main(argv=None):
+    args = arguments(argv)
+    with runtime.Budget(args.max_seconds, args.save_margin_seconds) as budget, runtime.run_lock(args.output):
+        try:
+            return run(args, budget)
+        except runtime.Preempted as exc:
+            # Startup has not modified training state; any prior last.pth is intact.
+            print(json.dumps(dict(status='startup_interrupted_for_resume', reason=str(exc))), flush=True)
+            return runtime.RESUME_EXIT_CODE
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

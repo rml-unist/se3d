@@ -26,7 +26,7 @@ class LabelsDataset(torch.utils.data.Dataset):
     NO_VALUE = 0.0
 
     def __init__(self, root, freeze_mode=None, training=True, generate_target=True,
-                 label_directory='label_3',
+                 label_directory='label',
                  timestamp_file='disparity/timestamps_with_label.txt',
                  calibration_path=None, min_box_height=0.0):
         self.root = Path(root).parent / label_directory

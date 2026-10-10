@@ -15,5 +15,5 @@ einops==0.8.2
 timm==0.6.13
 matplotlib==3.9.4
 fire==0.7.1
-tqdm
+tqdm==4.70.0
 tensorboardX==2.6.5

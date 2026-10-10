@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from se3d.data import load_splits
+from se3d.protocol import load_splits
 
 EXPECTED = dict(frames=48304, annotated_frames=46229, label=175123, label_original=184884)
 REQUIRED = ['timestamps.txt', 'disparity/timestamps_with_label.txt', 'events/left/events.h5',

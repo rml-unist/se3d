@@ -21,6 +21,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from vendor.waymo_eval_detection import WaymoDetectionMetricsEstimator
+from protocol_utils import atomic_json, sha256
 
 
 def main():
@@ -29,6 +30,8 @@ def main():
     parser.add_argument('output')
     args = parser.parse_args()
     data = pickle.loads(Path(args.predictions).read_bytes())
+    if not data['gt'] or len(data['gt']) != len(data['predictions']):
+        raise ValueError('Predictions must cover every GT frame exactly once')
     metrics = WaymoDetectionMetricsEstimator().waymo_evaluation(
         data['predictions'], data['gt'], ['Vehicle', 'Pedestrian', 'Cyclist'], fake_gt_infos=False)
     result = {k: float(np.asarray(v).reshape(-1)[0]) * 100 for k, v in metrics.items()}
@@ -36,9 +39,10 @@ def main():
     result = {'metrics_percent': result,
               'selection_vehicle_pedestrian_L2_AP': float(np.mean([result[k] for k in keys])),
               'frames': len(data['gt']), 'depth': data['depth'],
+              'predictions_sha256': sha256(args.predictions), 'binding': data.get('binding'),
               'definition': 'Official Waymo 3D AP/APH, native annotation LiDAR frame, IoU Vehicle .7 '
                             'Pedestrian/Cyclist .5, keyframes only, range100m, no blind-time benchmark'}
-    Path(args.output).write_text(json.dumps(result, indent=2) + '\n')
+    atomic_json(result, args.output)
 
 
 if __name__ == '__main__':

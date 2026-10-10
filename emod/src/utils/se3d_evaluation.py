@@ -1,8 +1,8 @@
 """Revision metrics built on the transferred KITTI-style matching implementation.
 
 Difficulty thresholds: 2D heights 40/25/15 px (strict greater-than for GT),
-occlusion 0/1/2, truncation <=1 (no limit). AP40 is the reported metric; AP11
-from the same 41-position precision envelope selects checkpoints on validation.
+occlusion 0/1/2, truncation <=1 (no limit). AP40 is the release reporting and
+checkpoint-selection metric. AP11 is retained for historical comparisons.
 These are SE3D criteria, not the official KITTI difficulty definition.
 """
 import numpy as np

@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
 import torch
 
-from se3d.data import load_splits
+from se3d.protocol import add_labels_argument, load_splits
 from se3d.models import ANCHORS, configure_classes
 
 
@@ -36,7 +36,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--data-root', required=True)
     parser.add_argument('--split', default='test', choices=['test', 'val', 'test_car_filtered'])
-    parser.add_argument('--labels', default='label', help='ground-truth directory (default: deduplicated labels)')
+    add_labels_argument(parser)
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument('--kitti-dir', help='per-frame KITTI detection files')
     source.add_argument('--predictions', help='predictions.pkl from tools/test.py')
@@ -44,7 +44,7 @@ def main():
     parser.add_argument('--output', required=True, help='metrics JSON')
     args = parser.parse_args()
 
-    configure_classes(ANCHORS['corrected'])  # sets the seven evaluation classes; anchors are unused here
+    configure_classes(ANCHORS['label'])  # sets the seven evaluation classes; anchors are unused here
     from se3d.engine import disparity_sums, report_by_condition
     from utils.kitti_common import get_label_anno
 

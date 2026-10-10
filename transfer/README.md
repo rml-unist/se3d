@@ -1,6 +1,6 @@
 # Transfer to DSEC-3DOD (paper Section VI)
 
-These scripts reproduce the controlled transfer experiments: each model is trained
+These scripts run the controlled transfer experiments: each model is trained
 on real DSEC-3DOD data twice with the same target data, schedule and seed, once
 from random initialization (scratch) and once from an SE3D checkpoint.
 
@@ -73,9 +73,18 @@ Optional cache of the event stacks (training reads identical tensors with or wit
 python transfer/prepare_cache.py --dsec-root <DSEC>/train --cache-root <cache>
 ```
 
-Training (16 epochs, 62,496 updates, batch size 1, Adam with lr 1e-4 and weight
-decay 1e-4, no augmentation; best.pth is the epoch with the highest validation
-V/P Level-2 AP, or the lowest disparity MAE for SE-CFF):
+Full-pool training uses 62,496 updates, equivalent to 16 passes through the 3,906
+training frames, with validation every 3,906 updates. Batch size is 1, Adam uses
+lr 1e-4 and weight decay 1e-4, and there is no augmentation. `best.pth` keeps the
+highest validation V/P Level-2 AP (lowest disparity MAE for SE-CFF); exact ties
+keep the earliest update. `final.pth` contains the final update independently of
+model selection.
+
+Source and target training share the default `--backend-profile historical`.
+Use the same explicit profile for both initialization arms and every seed;
+source weights do not select the target's numerical settings. The
+[backend table](../docs/EXPERIMENTS.md#backend-settings-and-determinism) lists
+the optional reproducible profile and strict error checking.
 
 ```bash
 COMMON="--dsec-root <DSEC>/train --labels-root <DSEC-3DOD> --metrics-python metrics_env/bin/python"
@@ -104,7 +113,30 @@ predictions can be re-scored without a GPU:
 metrics_env/bin/python transfer/evaluate_waymo.py results/.../fixed_test_predictions.pkl metrics.json
 ```
 
-## Results in the paper (Table VI)
+`test.py` uses the checkpoint's anchors and backend settings, and checks the
+runtime and protocol. Older checkpoints require their matching protocol and
+anchor files. Missing backend flags produce a warning and use the historical
+profile. Older `last.pth` files require their original training runner.
+
+## Resuming training
+
+Repeat the same command and output directory to resume from `last.pth`.
+Use a new output directory when changing code, inputs or training settings.
+See `python transfer/train.py --help` for checkpoint and time-limit options.
+
+## Tests
+
+The CPU tests require the repository's PyTorch environment and no GPU or Waymo
+installation:
+
+```bash
+CUDA_VISIBLE_DEVICES='' python -m unittest discover -s transfer/tests -v
+```
+
+These check subset selection, anchors, source initialization, backend settings
+and interrupted training/validation with small CPU models.
+
+## Historical results in the paper (Table VI)
 
 Waymo Level-2 3D AP (%) on the test keyframes; V/P is the mean of Vehicle and
 Pedestrian AP; MAE is the disparity error (px) at the keyframes.
@@ -127,14 +159,11 @@ Pedestrian AP; MAE is the disparity error (px) at the keyframes.
 Supplementary Sec. 10 also trains the DSGN-event SE3D arm (seed 20260909) from a
 source trained on the deduplicated SE3D annotations (V/P AP 6.25%, MAE 0.814 px).
 For this comparison, train the source model with
-`python tools/train.py --model dsgn_event --data-root /data/SE3D --labels corrected --epochs 8 --output runs/se3d_dsgn_event_corrected_8ep`,
-then pass `--source runs/se3d_dsgn_event_corrected_8ep/last.pth` to the target
-training command above.
-
-Scores obtained on another GPU type differ slightly from these (in our checks,
-box coordinates by about 1e-3 m and scores by about 1e-4 on identical inputs).
-The single-seed experiment on the interpolated 100-Hz annotations
-(Suppl. Sec. 7.3) uses a separate two-GPU runner and is not included here.
+`python tools/train.py --model dsgn_event --data-root /data/SE3D --labels label --updates 214368 --keep-updates 214368 --output runs/se3d_dsgn_event_label_8ep`,
+then pass `--source runs/se3d_dsgn_event_label_8ep/step_0214368.pth` to a new target
+run. The [historical reproduction limits](../docs/EXPERIMENTS.md#historical-paper-protocol-tables-iv-and-v)
+also apply to these results. The supplementary experiment on interpolated
+100-Hz annotations (Sec. 7.3) is not included here.
 
 ## Third-party code
 

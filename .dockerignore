@@ -1,0 +1,17 @@
+.git
+**/__pycache__
+**/*.pyc
+**/*.so
+**/build
+**/*.egg-info
+weights
+runs
+results
+data
+SE3D
+**/*.pth
+**/*.tar
+**/*.tar.gz
+**/*.zip
+.venv
+venv

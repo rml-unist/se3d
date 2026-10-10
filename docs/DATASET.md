@@ -24,14 +24,24 @@ The dataset is split into one archive per sequence, `SE3D_<sequence>.tar.gz`,
 plus `SE3D_meta.tar.gz`. Every archive unpacks into `SE3D/`:
 
 ```bash
+sha256sum -c --ignore-missing SHA256SUMS
 for f in SE3D_*.tar.gz; do tar xzf "$f"; done
-sha256sum -c SHA256SUMS          # optional
 python tools/check_dataset.py --data-root SE3D
 ```
+
+`--ignore-missing` verifies the archives present locally, including a partial
+download for the quick check. It does not verify download completeness; run
+`tools/check_dataset.py` after extracting the complete dataset for that check.
 
 ```
 SE3D/
 ├── calib.txt                       # shared by all sequences
+├── LICENSE, DATASET_LICENSE.md      # dataset MIT license
+├── DATASET_NOTICE.md                # CARLA attribution and third-party terms
+├── README.md, DATASET.md            # data format
+├── EXPERIMENTS.md                   # experiment protocol
+├── dataset_manifest.json           # annotation counts and content fingerprints
+├── splits/                         # sequence and frame splits, identical to this repository
 ├── label_correction_manifest.csv   # per-file record of the label deduplication
 ├── car_correction_decisions.json   # the 331 nested Car rows that were removed
 └── map1/
@@ -53,6 +63,12 @@ where a `_1` suffix marks a second sequence recorded in the same town and
 condition. Per-frame files are named by frame number; in sorted order, the i-th
 file of each folder belongs to the i-th line of `timestamps.txt`.
 
+The 2026-10-10 metadata update adds license notices and public annotation paths.
+Existing users can update `SE3D_meta.tar.gz`, `manifest.json` and `SHA256SUMS`;
+the sequence archives are unchanged. In the correction CSV and Car decisions,
+`path` names the corrected `label/` file and `original_path` its
+`label_original/` counterpart.
+
 ## File formats
 
 - **events.h5**: `events/x`, `events/y` (uint16), `events/t` (int64, ns),
@@ -73,14 +89,19 @@ file of each folder belongs to the i-th line of `timestamps.txt`.
 
 | Version | Folder | Boxes | Use |
 |---|---|---:|---|
-| Deduplicated | `label/` | 175,123 | all evaluations, recommended for training |
-| Before deduplication | `label_original/` | 184,884 | training data of the reported 40-epoch models |
+| Deduplicated | `label/` | 175,123 | default for new training, validation and test |
+| Before deduplication | `label_original/` | 184,884 | historical models and explicit comparison runs |
 
 Deduplication removed 9,761 rows: 5,153 Bus rows exported twice for the same
 vehicle, 4,277 Truck rows that duplicated Van actors, and 331 Car rows nested in
 a larger box of the same parked car. The deduplicated set has Car 95,270,
 Pedestrian 28,273, Bicycle 13,308, Motorcycle 21,448, Truck 7,394, Van 4,277 and
 Bus 5,153 boxes.
+
+Use `--labels label` (default) or `--labels label_original` to select annotations.
+Training defaults to corrected validation labels and Moderate AP40 selection;
+the [historical training commands](EXPERIMENTS.md#historical-paper-protocol-tables-iv-and-v)
+set original validation labels and AP11 explicitly.
 
 Difficulty levels follow KITTI with SE3D thresholds and no truncation limit:
 
@@ -115,3 +136,46 @@ several splits under different conditions.
   submission.
 
 The validation split has no Bus instances and no nighttime sunny frames.
+Validation mAP40 therefore averages the six classes with valid Moderate GT;
+test mAP40 averages seven. The night-rain test contains seven Car boxes and the
+night-heavy-rain test none; interpret class-specific AP with those counts.
+
+## Storage and event caches
+
+The current 59 dataset archives total 432.6 GB (decimal GB) compressed.
+The uncompressed sensor and annotation files occupy about 1,059.3 GB
+(1.06 TB, measured from the release inputs). Retaining archives, extracted
+data and all main-split event caches requires about 1.60 TB before accounting
+for checkpoints and filesystem overhead.
+The metadata archive and one sequence are sufficient for `tools/quick_check.py`;
+the full training or benchmark commands require every sequence in their split.
+
+The models read past-only, 10-channel mixed-density event stacks. On first
+access, a stack is generated from `events.h5` and stored under
+`<sequence>/events/sbn_5000000_MixedDensityEventStacking_10_0/`. At about 3 MB
+per frame, all 37,496 train/validation/test frames need roughly 110 GB of
+additional storage. This is a capacity estimate; actual cache bytes vary.
+
+Cache generation needs a writable destination. To use read-only dataset files:
+
+```bash
+python tools/prepare_event_cache.py --data-root /data/SE3D \
+    --cache-root /scratch/se3d-cache
+python tools/train.py --model emod --data-root /data/SE3D \
+    --cache-root /scratch/se3d-cache --output runs/emod
+```
+
+Use the same `--cache-root` for testing. Without it, caches are stored next to
+the events; complete existing caches can be read without write access. Cache
+files are not included in the dataset archives.
+
+## License
+
+The SE3D authors' rights in the sensor recordings, annotations, calibration,
+splits and documentation are released under the [MIT License](DATASET_LICENSE.md).
+CARLA assets retain their upstream terms; preserve the
+[CARLA attribution notice](DATASET_NOTICE.md) with the dataset license.
+`SE3D_meta.tar.gz` includes `SE3D/LICENSE`,
+`SE3D/DATASET_LICENSE.md` and `SE3D/DATASET_NOTICE.md`.
+Redistribute the metadata archive with any sequence archives, or include the
+notices alongside extracted recordings.

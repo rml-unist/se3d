@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from .od_cfg import cfg
 
-CLASSES = ['Car', 'Pedestrian', 'Bicycle', 'Motorcycle', 'Truck', 'Van', 'Bus']
+from se3d import CLASSES
 
 
 def configure_seven_classes(statistics_path):

@@ -75,12 +75,14 @@ def report_by_condition(gt, predictions, depth_sums, sequences):
 
 
 @torch.no_grad()
-def predict(model, dataset, workers=2, log_every=100):
+def predict(model, dataset, workers=2, log_every=100, check_stop=None):
     """Run a model over every frame; returns predictions, ground truth and disparity sums."""
     model.eval()
     processor = make_fcos3d_postprocessor(cfg)
     out = dict(metadata=[], predictions=[], gt=[], depth_sums=[])
     for index, batch in enumerate(loader(dataset, range(len(dataset)), workers, 1)):
+        if check_stop is not None:
+            check_stop()
         args = model_args(batch, training=False)
         disparity, detection, _, _ = model(**args)
         if not all(torch.isfinite(v).all() for v in detection.values()):
@@ -96,7 +98,7 @@ def predict(model, dataset, workers=2, log_every=100):
     return out
 
 
-def evaluate(model, dataset, workers=2):
-    out = predict(model, dataset, workers)
+def evaluate(model, dataset, workers=2, check_stop=None):
+    out = predict(model, dataset, workers, check_stop=check_stop)
     return report_by_condition(out['gt'], out['predictions'], out['depth_sums'],
                                [m['sequence'] for m in out['metadata']]), out
