@@ -162,6 +162,7 @@ def main():
         raise ValueError('Annotation totals do not match the release: %r' % observed)
     link(source / 'calib.txt', output / 'calib.txt')
     shutil.copyfile(REPO_ROOT / 'docs' / 'DATASET_LICENSE.md', output / 'LICENSE')
+    shutil.copyfile(REPO_ROOT / 'docs' / 'DATASET_NOTICE.md', output / 'DATASET_NOTICE.md')
     shutil.copyfile(REPO_ROOT / 'docs' / 'DATASET.md', output / 'README.md')
     if args.cache_time_bounds:
         write_verified(output / 'cache_time_bounds.json', Path(args.cache_time_bounds).read_bytes())

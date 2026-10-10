@@ -14,20 +14,19 @@ import hashlib
 import importlib.metadata
 import json
 import math
-import os
 import random
 import signal
 import sys
 import time
 from pathlib import Path
 
-os.environ.setdefault('CUBLAS_WORKSPACE_CONFIG', ':4096:8')
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import numpy as np
 import torch
 
 from se3d import CONDITIONS, REPO_ROOT, SPLITS_FILE
+from se3d.backends import add_backend_arguments, configure_backend
 from se3d.data import SE3DFrames, model_args
 from se3d.engine import evaluate, loader
 from se3d.models import ANCHORS, MODELS, anchor_name, build_model, configure_classes
@@ -106,14 +105,17 @@ def main():
                         help='save and return 75 after this allocation time; continue with the same command')
     parser.add_argument('--allocation-updates', type=int,
                         help='save and return 75 after this many new updates, useful for resume checks')
-    parser.add_argument('--strict-determinism', action='store_true',
-                        help='error on operations without deterministic CUDA implementations')
+    add_backend_arguments(parser)
     parser.add_argument('--limit-train', type=int, default=None, help='debug: use only the first N training frames')
     parser.add_argument('--limit-val', type=int, default=None, help='debug: validation frames')
     args = parser.parse_args()
     if args.epochs < 1 or args.workers < 0 or any(x is not None and x < 1 for x in
             (args.limit_train, args.limit_val, args.max_seconds, args.updates, args.validate_every, args.allocation_updates)):
         parser.error('epochs, time and frame limits must be positive; workers must be nonnegative')
+    try:
+        backend = configure_backend(args.backend_profile, args.strict_determinism)
+    except ValueError as exc:
+        parser.error(str(exc))
 
     started = time.monotonic()
     stop = False
@@ -161,7 +163,7 @@ def main():
                   train_annotations_sha256=annotation_fingerprint(train), validation_annotations_sha256=validation_hash,
                   splits_sha256=sha256(SPLITS_FILE), code_sha256=code_fingerprint(),
                   limit_train=args.limit_train, limit_val=args.limit_val, torch=torch.__version__,
-                  cudnn_deterministic=True, cudnn_benchmark=False, allow_tf32=False,
+                  backend=backend,
                   strict_determinism=args.strict_determinism)
     config['cache_time_bounds_sha256'] = sha256(args.cache_time_bounds) if args.cache_time_bounds else None
     config_path = run / 'effective_config.json'
@@ -174,17 +176,13 @@ def main():
         for name in ('torch', 'torchvision', 'numpy', 'numba', 'scipy', 'timm', 'h5py', 'hdf5plugin', 'tqdm'):
             packages[name] = importlib.metadata.version(name)
         (run / 'environment.json').write_text(json.dumps(dict(python=sys.version, packages=packages,
-            cuda=torch.version.cuda, cudnn=torch.backends.cudnn.version(), gpu=torch.cuda.get_device_name()), indent=2) + '\n')
+            cuda=torch.version.cuda, cudnn=torch.backends.cudnn.version(), gpu=torch.cuda.get_device_name(),
+            backend=backend), indent=2) + '\n')
 
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cuda.matmul.allow_tf32 = False
-    torch.backends.cudnn.allow_tf32 = False
-    torch.use_deterministic_algorithms(args.strict_determinism)
     model = build_model(args.model).cuda()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-4)
     epoch = cursor = step = last_validated_step = validations = 0

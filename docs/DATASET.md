@@ -24,15 +24,20 @@ The dataset is split into one archive per sequence, `SE3D_<sequence>.tar.gz`,
 plus `SE3D_meta.tar.gz`. Every archive unpacks into `SE3D/`:
 
 ```bash
-sha256sum -c SHA256SUMS
+sha256sum -c --ignore-missing SHA256SUMS
 for f in SE3D_*.tar.gz; do tar xzf "$f"; done
 python tools/check_dataset.py --data-root SE3D
 ```
+
+`--ignore-missing` verifies the archives present locally, including a partial
+download for the quick check. It does not verify download completeness; run
+`tools/check_dataset.py` after extracting the complete dataset for that check.
 
 ```
 SE3D/
 ├── calib.txt                       # shared by all sequences
 ├── LICENSE, DATASET_LICENSE.md      # dataset MIT license
+├── DATASET_NOTICE.md                # CARLA attribution and third-party terms
 ├── README.md, EXPERIMENTS.md        # data format and experiment protocol
 ├── dataset_manifest.json           # annotation counts and content fingerprints
 ├── splits/                         # sequence and frame splits, identical to this repository
@@ -173,11 +178,13 @@ metadata; ordinary downloads contain the raw events and do not need it.
 
 ## License
 
-The SE3D sensor recordings, annotations, calibration, splits and documentation
-are released under the [MIT License](DATASET_LICENSE.md). It applies to the
-SE3D dataset already distributed in the `SE3D_v2` archives as well as new
-packaging. Keep the license notice when redistributing it. The refreshed
-`SE3D_meta.tar.gz` includes `SE3D/LICENSE` and `SE3D/DATASET_LICENSE.md`.
+The SE3D authors' rights in the sensor recordings, annotations, calibration,
+splits and documentation are released under the [MIT License](DATASET_LICENSE.md).
+CARLA assets retain their upstream terms; preserve the
+[CARLA attribution notice](DATASET_NOTICE.md) with the dataset license.
+These notices accompany the existing `SE3D_v2` archives as well as new
+packaging. The refreshed `SE3D_meta.tar.gz` includes `SE3D/LICENSE`,
+`SE3D/DATASET_LICENSE.md` and `SE3D/DATASET_NOTICE.md`.
 Redistribute the metadata archive with any sequence archives, or include the
-license alongside extracted recordings. Newly packaged sequence archives also
-carry `SE3D/LICENSE` directly.
+notices alongside extracted recordings. Newly packaged sequence archives also
+carry `SE3D/LICENSE` and `SE3D/DATASET_NOTICE.md` directly.

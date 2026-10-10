@@ -20,6 +20,7 @@ except ImportError:
     import runtime
 
 import torch  # noqa: E402
+from se3d.backends import restore_checkpoint_backend  # noqa: E402
 
 
 def checkpoint_anchors(state, anchors_path=None):
@@ -45,6 +46,7 @@ def run(args, budget):
     if protocol.sha256(args.checkpoint) != checkpoint_hash:
         raise ValueError('Checkpoint changed while it was being loaded')
     config = state.get('config', {})
+    backend, backend_source = restore_checkpoint_backend(config)
     if config.get('model', args.model) != args.model:
         raise ValueError('Checkpoint architecture differs from --model')
     protocol_hash = protocol.sha256(args.protocol)
@@ -66,6 +68,7 @@ def run(args, budget):
                     protocol_sha256=protocol_hash, anchor_payload_sha256=protocol.json_digest(anchors),
                     test_inputs=dict(rows_sha256=inputs['rows_sha256'], files_sha256=inputs['files_sha256']),
                     environment=runtime.environment(), metrics_environment=runtime.metrics_environment(args.metrics_python),
+                    backend=backend, backend_source=backend_source,
                     legacy_checkpoint=state.get('schema') != runtime.SCHEMA, model=args.model,
                     device=args.device, debug_limit_test=args.limit_test, frames=len(test_rows))
     output = Path(args.output)

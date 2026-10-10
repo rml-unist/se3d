@@ -11,6 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import torch
+from se3d.backends import configure_backend, restore_checkpoint_backend
 from se3d.data import SE3DFrames
 from se3d.engine import predict
 from se3d.models import ANCHORS, MODELS, anchor_name, build_model, configure_classes
@@ -36,6 +37,10 @@ def main():
         parser.error('--frames must be positive')
     torch.manual_seed(20260909)
     checkpoint = torch.load(args.checkpoint, map_location='cpu', weights_only=False) if args.checkpoint else None
+    if checkpoint:
+        backend, backend_source = restore_checkpoint_backend(checkpoint.get('config', {}))
+    else:
+        backend, backend_source = configure_backend('historical'), 'random_initialization_default'
     anchors = anchors_for(checkpoint, args.anchors) if checkpoint else ANCHORS[args.anchors or 'label']
     configure_classes(anchors)
     model = build_model(args.model).cuda()
@@ -48,6 +53,7 @@ def main():
     report = dict(passed=True, scope='input loading and finite inference; not a benchmark', model=args.model,
                   sequence=args.sequence, split=args.split, labels=args.labels, frames=len(ds),
                   checkpoint_sha256=sha256(args.checkpoint) if args.checkpoint else None,
+                  backend=backend, backend_source=backend_source,
                   anchors_sha256=sha256(anchors), metadata=out['metadata'],
                   predictions_per_frame=[len(a['name']) for a in out['predictions']],
                   valid_disparity_pixels=[int(v[4]) for v in out['depth_sums']])

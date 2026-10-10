@@ -15,4 +15,7 @@ and a modified [CARLA-KITTI](https://github.com/fnozarian/CARLA-KITTI) collector
 neither is included here.
 
 The SE3D dataset's MIT terms are stated separately in
-[`docs/DATASET_LICENSE.md`](docs/DATASET_LICENSE.md).
+[`docs/DATASET_LICENSE.md`](docs/DATASET_LICENSE.md). CARLA-specific assets
+retain their upstream CC-BY terms; see the versioned sources and attribution in
+[`docs/DATASET_NOTICE.md`](docs/DATASET_NOTICE.md). The dataset MIT grant covers
+the SE3D authors' rights and does not relicense third-party assets.

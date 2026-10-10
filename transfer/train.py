@@ -25,6 +25,7 @@ except ImportError:
 
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
+from se3d.backends import add_backend_arguments, configure_backend  # noqa: E402
 
 
 def arguments(argv=None):
@@ -50,7 +51,7 @@ def arguments(argv=None):
     parser.add_argument('--seed', type=int, default=20260909, help='target optimization seed')
     parser.add_argument('--workers', type=int, default=2)
     parser.add_argument('--device', choices=['cuda', 'cpu'], default='cuda', help='CPU is for small runtime gates')
-    parser.add_argument('--strict-determinism', action='store_true', help='explicit opt-in; changes historical numerics')
+    add_backend_arguments(parser)
     parser.add_argument('--save-every', type=int, default=200)
     parser.add_argument('--keep-updates', nargs='*', type=int, default=[])
     parser.add_argument('--max-seconds', type=float, default=0, help='allocation wall budget, including startup; 0 disables')
@@ -75,6 +76,8 @@ def arguments(argv=None):
             parser.error('--' + field.replace('_', '-') + ' must be positive')
     if args.workers < 0 or args.save_every <= 0 or args.allocation_updates < 0:
         parser.error('Invalid worker/checkpoint/update-limit argument')
+    if args.strict_determinism and args.backend_profile == 'historical':
+        parser.error('--strict-determinism cannot be combined with --backend-profile historical')
     return args
 
 
@@ -129,16 +132,10 @@ def prepare_inputs(args):
 
 def run(args, budget):
     output = Path(args.output)
+    backend = configure_backend(args.backend_profile, args.strict_determinism)
     base, subset, rows, anchors_path, anchors, inputs = prepare_inputs(args)
     common.configure(anchors)
     source, source_info = source_checkpoint(args)
-    # Preserve historical backend defaults unless strict mode is explicitly chosen.
-    if args.strict_determinism:
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
-        torch.backends.cuda.matmul.allow_tf32 = False
-        torch.backends.cudnn.allow_tf32 = False
-        torch.use_deterministic_algorithms(True)
     code = runtime.code_fingerprint(common.REPO_ROOT)
     train_size = len(base['splits']['train'])
     legacy_cycle = min(train_size, args.limit_train) if args.limit_train else train_size
@@ -165,7 +162,8 @@ def run(args, budget):
                   input_hashes={name: dict(rows_sha256=value['rows_sha256'], files_sha256=value['files_sha256'])
                                 for name, value in inputs.items()}, code_sha256=code['sha256'],
                   environment=runtime.environment(), metrics_environment=runtime.metrics_environment(args.metrics_python),
-                  device=args.device, workers=args.workers, strict_determinism=args.strict_determinism,
+                  device=args.device, workers=args.workers, backend=backend,
+                  strict_determinism=args.strict_determinism,
                   limit_train=args.limit_train, limit_val=args.limit_val,
                   keep_updates=sorted(set(args.keep_updates)))
     runtime.ensure_identity(output / 'effective_config.json', config)

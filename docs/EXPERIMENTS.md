@@ -3,7 +3,39 @@
 The manuscript is under review. The existing benchmark tables describe its
 historical runs. The experiments below are a new, predeclared release study;
 their results and checkpoints must not be described as complete before the
-training, evaluation and receipts have been verified.
+training, evaluation and saved run records have been verified.
+
+## Historical paper protocol (Tables IV and V)
+
+Table IV uses original annotations for both training and validation, 40
+complete passes over all training conditions, and Moderate 3D AP11 validation
+selection. Table V's All and DSGN columns reuse those models. Its Sun model
+uses 105 complete passes over 10,233 sunny training frames and validates on
+the sunny subset after each pass, also with original annotations and AP11.
+Test evaluation uses corrected `label/` annotations and AP40 for every model.
+
+```bash
+python tools/train.py --model emod --data-root /data/SE3D \
+    --labels label_original --validation-labels label_original --selection-metric ap11 \
+    --backend-profile historical --epochs 40 --seed 20260909 --output runs/hist_emod
+python tools/train.py --model dsgn_event --data-root /data/SE3D \
+    --labels label_original --validation-labels label_original --selection-metric ap11 \
+    --backend-profile historical --epochs 40 --seed 20260909 --output runs/hist_dsgn_event
+python tools/train.py --model emod --data-root /data/SE3D \
+    --labels label_original --validation-labels label_original --selection-metric ap11 \
+    --conditions day_sunny night_sunny --validation-conditions day_sunny night_sunny \
+    --anchors label_original_sunny --backend-profile historical \
+    --epochs 105 --seed 20260909 --output runs/hist_emod_sunny
+```
+
+These commands reproduce the recorded data, budget and checkpoint-selection
+protocol using the maintained runner. The archived runners left backend flags
+at PyTorch defaults, but their effective flags and full environments were not
+recorded. The explicit `historical` profile reconstructs that PyTorch 2.5
+convention; it is not an observation of the old processes. Refactored code,
+unrecorded settings and CUDA nondeterminism prevent a claim of identical
+trained weights or scores. Use the published checkpoints for the inference
+tables, and report fresh retraining results separately.
 
 ## Source training and model selection
 
@@ -54,11 +86,11 @@ are separate references, not a controlled substitute for these runs.
 ```bash
 python tools/train.py --model dsgn_event --data-root /data/SE3D \
     --labels label --validation-labels label --selection-metric ap40 \
-    --updates 1071840 --validate-every 26796 --seed 20260909 \
+    --updates 1071840 --validate-every 26796 --backend-profile historical --seed 20260909 \
     --output runs/dsgn_event_s20260909
 python tools/train.py --model emod --data-root /data/SE3D \
     --conditions day_sunny night_sunny --updates 1071840 --validate-every 26796 \
-    --seed 20260909 --output runs/emod_sunny_s20260909
+    --backend-profile historical --seed 20260909 --output runs/emod_sunny_s20260909
 ```
 
 Repeat primary runs with seeds 20260910 and 20260911. Report all per-seed
@@ -67,13 +99,49 @@ per-class AP and condition-specific disparity results. Do not select a seed
 using test scores or combine different source/selection protocols into one
 mean. Three-seed SD describes these runs; it is not a guaranteed AP tolerance.
 
-## Runtime and resumption
+## Backend settings and determinism
 
-Python, NumPy, CPU and CUDA RNGs are seeded. cuDNN benchmarking and TF32 are
-disabled and cuDNN deterministic algorithms are requested. This does not
-guarantee that every CUDA operation is deterministic: `--strict-determinism`
-requests an error for unsupported operations. Record this setting rather than
-claiming bit-for-bit repeatability across machines.
+Source and transfer entrypoints use the same implementation and default to
+`--backend-profile historical`. Every arm of the new release study passes that
+option explicitly. The profile controls numerical settings only; annotations,
+splits, budgets and selection rules remain separate command-line choices.
+
+| Setting | `historical` (default) | `reproducible` | `reproducible --strict-determinism` |
+|---|---|---|---|
+| cuDNN deterministic | false | true | true |
+| cuDNN benchmark | false | false | false |
+| cuDNN TF32 | true | false | false |
+| Matrix-multiply TF32 | false | false | false |
+| Error on nondeterministic operations | false | false | true |
+
+Python, NumPy, CPU and CUDA RNGs are seeded in every profile. The reproducible
+profile also supplies `CUBLAS_WORKSPACE_CONFIG=:4096:8` if no value is set.
+The historical profile preserves an existing workspace environment variable;
+its effective value is recorded. Strict mode requires `:4096:8` or `:16:8`.
+`--strict-determinism` alone selects the reproducible profile; combining it
+with an explicit historical profile is rejected.
+The run also records `NVIDIA_TF32_OVERRIDE` and
+`TORCH_ALLOW_TF32_CUBLAS_OVERRIDE`. Overrides that contradict a training profile
+are rejected. Inference requires these process-level values to match the
+checkpoint record rather than changing them after PyTorch has been imported.
+
+Neither profile guarantees bitwise-identical GPU training. Strict mode raises
+an error for unsupported operations, including CUDA grid-sampling backward
+used by these models, so it can stop training. These limits follow PyTorch's
+[reproducibility guidance](https://github.com/pytorch/pytorch/blob/v2.5.1/docs/source/notes/randomness.rst)
+and [TF32 settings](https://github.com/pytorch/pytorch/blob/v2.5.1/docs/source/notes/cuda.rst).
+The historical profile is reconstructed from archived code and the pinned
+PyTorch 2.5 defaults; the old run files did not capture all effective settings.
+
+New checkpoints include the effective profile and flags. Both test entrypoints
+restore them before CUDA initialization and include them in the evaluation
+record. A historical checkpoint without recorded flags uses the historical
+profile with an explicit warning and an assumption field in that record.
+Changing profiles changes the run configuration and requires a new output
+directory; checkpoints from a different frozen code/configuration are not
+silently resumed.
+
+## Runtime and resumption
 
 `effective_config.json` records annotation, split, anchor and runtime source
 hashes, budget, selection rule and seed. `environment.json` records package,
@@ -81,10 +149,13 @@ CUDA and GPU information. `last.pth` stores optimizer and RNG states, epoch,
 within-epoch cursor and completed validation state. Repeating the same command
 resumes it; mismatched code, inputs or configuration are rejected.
 
-`--max-seconds` and `--allocation-updates` limit one allocation without changing
+`--max-seconds` and `--allocation-updates` limit one scheduler job without changing
 the experiment budget. A time limit, SIGTERM or SIGUSR1 saves and returns exit
 code 75. Validation interrupted at a boundary is rerun before further updates.
-A scheduler may requeue exit 75; unexpected failures must remain failures.
+A scheduler may resubmit exit 75; unexpected failures must remain failures.
+Here a run record is a saved JSON file with settings, hashes or measurements;
+a GPU check is a short training/inference run before the full experiment.
+One scheduler job may have a shorter time limit than the complete experiment.
 
 ## Earlier annotation comparison
 
@@ -156,6 +227,9 @@ this one subset's class balance to every possible 10% sample.
 
 The complete study has at most 41 training runs before any verified reuse:
 11 source, 12 full-label target and 18 label-efficiency runs. Historical timing
-suggests roughly 1,870–2,220 GPU-hours including an allowance for gates and
-final inference. This is a planning estimate, not a measured completion time.
-Queue delays and available concurrency determine the calendar duration.
+suggests roughly 1,870–2,220 GPU-hours under the historical backend profile,
+including an allowance for GPU checks and final inference. This is a planning
+estimate, not a measured completion time or upper bound. It does not estimate
+the potentially slower reproducible or strict profiles. Measure sustained
+update and validation times on the intended A100 configuration before revising
+it. Queue delays and available concurrency determine the calendar duration.

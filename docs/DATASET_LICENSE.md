@@ -1,9 +1,14 @@
 # SE3D dataset license
 
-The SE3D dataset, including its sensor recordings, annotations, calibration,
-split definitions and associated documentation, is released under the MIT
-License reproduced below. Retain this notice when redistributing the dataset
-or substantial portions of it.
+Robotics and Mobility Lab releases its contributions to the SE3D dataset,
+including sensor recordings to the extent it holds rights, annotations,
+calibration, split definitions and documentation, under the MIT License below.
+Retain this notice when redistributing the dataset or substantial portions of it.
+
+This grant covers rights held by the SE3D authors. Third-party materials retain
+their upstream rights and license notices. In particular, CARLA identifies its
+scene assets as CC-BY; the SE3D MIT grant does not relicense those assets.
+Retain the accompanying [CARLA attribution notice](DATASET_NOTICE.md).
 
 MIT License
 

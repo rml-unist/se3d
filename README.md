@@ -50,10 +50,14 @@ size and the additional event-cache requirement.
 
 ```bash
 cd /data
-sha256sum -c SHA256SUMS
+sha256sum -c --ignore-missing SHA256SUMS
 for f in SE3D_*.tar.gz; do tar xzf "$f"; done
 python tools/check_dataset.py --data-root /data/SE3D
 ```
+
+`--ignore-missing` checks the archives you downloaded, so it also works for
+the two-file quick check below. It does not confirm that the whole dataset is
+present; `tools/check_dataset.py` checks the complete extracted dataset.
 
 The files in the top level of the [older download folder](https://drive.google.com/drive/folders/1zwnqBDSj8OoYPkiBQ1F-BFCwXPKsUnXw) (`train/val/test.tar.gz`,
 `EMOD_day_160.pth`, `EMOD_night_135.pth`) belong to the 2024 release of the
@@ -176,16 +180,42 @@ This is an inference comparison using fixed weights, not training variance.
 
 ### Train
 
+To retrain the historical protocols in Tables IV and V:
+
+```bash
+# Table IV; the EMOD run is also Table V's All model
+python tools/train.py --model emod --data-root /data/SE3D \
+    --labels label_original --validation-labels label_original --selection-metric ap11 \
+    --backend-profile historical --epochs 40 --seed 20260909 --output runs/hist_emod
+python tools/train.py --model dsgn_event --data-root /data/SE3D \
+    --labels label_original --validation-labels label_original --selection-metric ap11 \
+    --backend-profile historical --epochs 40 --seed 20260909 --output runs/hist_dsgn_event
+# Table V Sun: sunny training and sunny validation, 105 complete passes
+python tools/train.py --model emod --data-root /data/SE3D \
+    --labels label_original --validation-labels label_original --selection-metric ap11 \
+    --conditions day_sunny night_sunny --validation-conditions day_sunny night_sunny \
+    --anchors label_original_sunny --backend-profile historical \
+    --epochs 105 --seed 20260909 --output runs/hist_emod_sunny
+```
+
+These reproduce the recorded training protocol with the maintained runner.
+The historical backend profile reconstructs PyTorch 2.5 defaults from the
+archived code; the original runs did not record their effective backend flags.
+Identical trained weights or scores are therefore not guaranteed. See the
+[historical protocol and limitations](docs/EXPERIMENTS.md#historical-paper-protocol-tables-iv-and-v).
+
+The new release study uses the following commands:
+
 ```bash
 # New baselines: release labels for both training and validation (the default)
 python tools/train.py --model emod --data-root /data/SE3D \
-    --seed 20260909 --output runs/emod_s20260909
+    --backend-profile historical --seed 20260909 --output runs/emod_s20260909
 python tools/train.py --model dsgn_event --data-root /data/SE3D \
-    --seed 20260909 --output runs/dsgn_event_s20260909
+    --backend-profile historical --seed 20260909 --output runs/dsgn_event_s20260909
 # Sunny training: exactly the same update budget and full validation schedule
 python tools/train.py --model emod --data-root /data/SE3D \
     --conditions day_sunny night_sunny --updates 1071840 --validate-every 26796 \
-    --seed 20260909 --output runs/emod_sunny_s20260909
+    --backend-profile historical --seed 20260909 --output runs/emod_sunny_s20260909
 ```
 
 Training uses batch size 1, Adam with a learning rate and weight decay of 1e-4,
@@ -204,12 +234,21 @@ All commands use `--labels label|label_original`; new validation defaults to
 tables above used a different selection rule. See the complete
 [experiment protocol](docs/EXPERIMENTS.md) before comparing runs.
 
+Source and transfer training share `--backend-profile historical|reproducible`.
+The release study explicitly uses `historical` for every arm; this controls
+numerical settings independently of the label and validation choices.
+Inference restores the settings recorded in new checkpoints. The
+[backend settings table](docs/EXPERIMENTS.md#backend-settings-and-determinism)
+explains the optional reproducible profile and strict error checking.
+
 Both models fit on a 24-GB GPU (historical peak allocated memory about 14 GB).
 Historical A100 runs took about 31.9 GPU-hours for EMOD and 30.0 for DSGN-event
-at eight epochs, including allocation overhead and validation. Scaling those
+at eight epochs, including job startup, data loading and validation. Scaling those
 measurements gives roughly 160 and 150 GPU-hours per 40-epoch run, respectively;
-these are planning estimates, exclude queue time and will be updated from the
-new protocol's measurements.
+these are historical-profile planning estimates, exclude queue time and are
+not upper bounds. Disabling TF32 or requesting deterministic kernels can be
+slower; the estimates do not cover `reproducible` or strict mode. New A100
+update and validation timings must be measured before revising the forecast.
 
 Event stacks are computed from `events.h5` the first time a frame is read and
 stored next to the events (about 3 MB per frame). `tools/prepare_event_cache.py`
@@ -266,7 +305,8 @@ and BibTeX entry will be added when available.
 
 ## License
 
-The code is released under the [MIT license](LICENSE). The SE3D sensor data,
-annotations, calibration and splits are also released under MIT; see the
-[dataset license](docs/DATASET_LICENSE.md). Third-party code keeps its original
-license; see [NOTICE.md](NOTICE.md).
+The code is released under the [MIT license](LICENSE). The SE3D authors' rights
+in the sensor data, annotations, calibration and splits are also released
+under MIT; see the [dataset license](docs/DATASET_LICENSE.md). CARLA assets keep
+their upstream terms and [attribution notice](docs/DATASET_NOTICE.md).
+Third-party code keeps its original license; see [NOTICE.md](NOTICE.md).

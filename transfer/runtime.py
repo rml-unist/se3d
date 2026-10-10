@@ -19,6 +19,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from se3d.backends import backend_state
 
 try:
     from .protocol_utils import atomic_json, json_digest, sha256
@@ -81,13 +82,7 @@ def environment():
         except importlib.metadata.PackageNotFoundError:
             packages[name] = None
     return dict(python=sys.version, packages=packages, cuda=torch.version.cuda,
-                cudnn=torch.backends.cudnn.version(),
-                cudnn_benchmark=torch.backends.cudnn.benchmark,
-                cudnn_deterministic=torch.backends.cudnn.deterministic,
-                cudnn_allow_tf32=torch.backends.cudnn.allow_tf32,
-                matmul_allow_tf32=torch.backends.cuda.matmul.allow_tf32,
-                deterministic_algorithms=torch.are_deterministic_algorithms_enabled(),
-                cublas_workspace_config=os.environ.get('CUBLAS_WORKSPACE_CONFIG'))
+                cudnn=torch.backends.cudnn.version(), **backend_state())
 
 
 def metrics_environment(interpreter):

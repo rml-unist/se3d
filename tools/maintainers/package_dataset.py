@@ -4,7 +4,7 @@ Input is the same layout consumed by tools/train.py and tools/check_dataset.py:
 label/ contains release annotations and label_original/ the historical set.
 Use import_legacy_dataset.py once to convert the archived internal capture.
 
-Each sequence archive includes the dataset MIT license. SE3D_meta.tar.gz holds
+Each sequence archive includes the dataset MIT license and attribution notice. SE3D_meta.tar.gz holds
 calibration, annotation provenance, license and documentation. Symlinks in a
 working tree are dereferenced; released archives have no external dependency.
 """
@@ -60,6 +60,7 @@ def stage_sequence(source, sequence, stage):
     if not release or release != original:
         raise ValueError('Annotation file lists differ: ' + sequence)
     shutil.copyfile(REPO_ROOT / 'docs' / 'DATASET_LICENSE.md', stage / 'SE3D' / 'LICENSE')
+    shutil.copyfile(REPO_ROOT / 'docs' / 'DATASET_NOTICE.md', stage / 'SE3D' / 'DATASET_NOTICE.md')
     return size
 
 
@@ -123,7 +124,8 @@ def main():
                     raise ValueError('Output holds a different release: ' + name)
                 print(name + ' already packaged', flush=True)
             else:
-                archive(stage, ['SE3D/' + sequence, 'SE3D/LICENSE'], output / name, args.processes)
+                archive(stage, ['SE3D/' + sequence, 'SE3D/LICENSE', 'SE3D/DATASET_NOTICE.md'],
+                        output / name, args.processes)
                 record(output, name, dict(sequence=sequence, bytes=(output / name).stat().st_size,
                     sha256=sha256(output / name), dataset_manifest_sha256=provenance, license='MIT'))
             shutil.rmtree(stage)
@@ -147,6 +149,7 @@ def main():
         shutil.copyfile(REPO_ROOT / 'docs' / 'DATASET.md', meta / 'README.md')
         shutil.copyfile(REPO_ROOT / 'docs' / 'DATASET_LICENSE.md', meta / 'LICENSE')
         shutil.copyfile(REPO_ROOT / 'docs' / 'DATASET_LICENSE.md', meta / 'DATASET_LICENSE.md')
+        shutil.copyfile(REPO_ROOT / 'docs' / 'DATASET_NOTICE.md', meta / 'DATASET_NOTICE.md')
         shutil.copyfile(REPO_ROOT / 'docs' / 'EXPERIMENTS.md', meta / 'EXPERIMENTS.md')
         shutil.copytree(REPO_ROOT / 'splits', meta / 'splits')
         (meta / 'benchmarks').mkdir()

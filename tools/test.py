@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
 import torch
 
+from se3d.backends import restore_checkpoint_backend
 from se3d.data import SE3DFrames
 from se3d.engine import report_by_condition, predict
 from se3d.models import ANCHORS, MODELS, anchor_name, build_model, configure_classes
@@ -81,7 +82,8 @@ def main():
     parser.add_argument('--save-kitti', action='store_true')
     args = parser.parse_args()
 
-    checkpoint = torch.load(args.checkpoint, map_location='cuda', weights_only=False)
+    checkpoint = torch.load(args.checkpoint, map_location='cpu', weights_only=False)
+    backend, backend_source = restore_checkpoint_backend(checkpoint.get('config', {}))
     configure_classes(anchors_for(checkpoint, args.anchors))
     config = checkpoint.get('config', {})
     seed = int(config.get('seed', 20260909))
@@ -96,7 +98,8 @@ def main():
     report = report_by_condition(out['gt'], out['predictions'], out['depth_sums'],
                                  [m['sequence'] for m in out['metadata']])
     report.update(split=args.split, labels=args.labels, checkpoint=str(args.checkpoint),
-                  checkpoint_sha256=sha256(args.checkpoint), selected_epoch=checkpoint.get('epoch'))
+                  checkpoint_sha256=sha256(args.checkpoint), selected_epoch=checkpoint.get('epoch'),
+                  backend=backend, backend_source=backend_source)
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
     (output / 'metrics.json').write_text(json.dumps(report, indent=2) + '\n')

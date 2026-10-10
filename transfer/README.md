@@ -80,6 +80,12 @@ highest validation V/P Level-2 AP (lowest disparity MAE for SE-CFF); exact ties
 keep the earliest update. `final.pth` contains the final update independently of
 model selection.
 
+Source and target training share the default `--backend-profile historical`.
+Use the same explicit profile for both initialization arms and every seed;
+source weights do not select the target's numerical settings. The
+[backend table](../docs/EXPERIMENTS.md#backend-settings-and-determinism) lists
+the optional reproducible profile and strict error checking.
+
 ```bash
 COMMON="--dsec-root <DSEC>/train --labels-root <DSEC-3DOD> --metrics-python metrics_env/bin/python"
 for SEED in 20260909 20260910 20260911; do
@@ -145,7 +151,7 @@ and training never open excluded training annotations to obtain these statistics
 If a class has no raw boxes, the predeclared, source-independent constants in
 [`absent_class_anchors_v1.json`](protocol/absent_class_anchors_v1.json) are used
 only for that class. No fallback is needed for the three frozen subsets above.
-Each anchor receipt records the selected annotation/calibration hashes, class
+Each anchor record contains the selected annotation/calibration hashes, class
 counts, and fallback hash. Training recomputes these selected-only statistics
 and rejects a mismatched or full-pool anchor file.
 
@@ -153,14 +159,15 @@ and rejects a mismatched or full-pool anchor file.
 python transfer/prepare_subsets.py --dsec-root /data/DSEC/train \
     --labels-root /data/DSEC-3DOD --output runs/target_subsets
 
-# SOURCE_SHA256 comes from the frozen source checkpoint receipt.
+# SOURCE_SHA256 is the SHA256 of the fixed source checkpoint file.
 SOURCE=/path/to/corrected_dsgn_source_s20260909/step_0214368.pth
 SUBSETS=runs/target_subsets
 DATA=(--dsec-root /data/DSEC/train --labels-root /data/DSEC-3DOD \
       --metrics-python metrics_env/bin/python)
 for FRACTION in 10 25 50; do
   for SEED in 20260909 20260910 20260911; do
-    PAIR=(--model dsgn_event --seed "$SEED" --updates 62496 --validate-every 3906 \
+    PAIR=(--model dsgn_event --backend-profile historical --seed "$SEED" \
+          --updates 62496 --validate-every 3906 \
           --subset "$SUBSETS/fraction_$FRACTION/subset.json" \
           --anchors "$SUBSETS/fraction_$FRACTION/anchors.json")
     python transfer/train.py "${DATA[@]}" "${PAIR[@]}" --init scratch \
@@ -182,7 +189,7 @@ Every fraction trains for exactly **62,496 optimizer updates** and has the same
 **16 validation candidates** at multiples of 3,906. Smaller subsets cycle
 deterministically reshuffled permutations until the limit; validation can occur
 inside a data pass. This measures equal update budgets, with more passes over
-smaller subsets. A nonmultiple update limit used for a debug gate also receives
+smaller subsets. A nonmultiple update limit used for a short check also receives
 a final validation. `--epochs` remains a legacy shorthand based on the full
 training pool; explicit `--updates` and `--validate-every` are preferred.
 
@@ -192,9 +199,12 @@ training pool; explicit `--updates` and `--validate-every` are preferred.
 protocol and subset hashes, anchor payload, selected train/validation annotation,
 calibration and disparity hashes, code manifest, environment, and update/selection
 rules. `initialization.json` records the seeded model and reset-head tensor hashes
-and the complete copied tensor list. The default target backend flags retain the
-historical runtime defaults and are recorded; `--strict-determinism` is an explicit
-change to that configuration.
+and the complete copied tensor list. Both training entrypoints set and record
+the same explicit historical backend profile by default. The profile is based
+on archived code and PyTorch 2.5 defaults; it is not a measurement of old runs.
+`--backend-profile reproducible` disables TF32 and requests deterministic cuDNN
+kernels. `--strict-determinism` selects that profile and also errors on
+unsupported operations. Each choice belongs in a separate run configuration.
 
 The output directory has an exclusive process lock. `last.pth` saves model,
 optimizer, sampler epoch/cursor, completed updates, validation state, best step,
@@ -206,24 +216,28 @@ Validation preserves the training RNG state. The dataset has no stochastic
 augmentation; exact CPU resume tests do not promise bitwise equality across GPU
 models or nondeterministic CUDA kernels.
 
-`SIGUSR1`, `SIGTERM`, or the allocation budget checkpoints at a safe boundary
+`SIGUSR1`, `SIGTERM`, or the job time limit saves a checkpoint at a safe boundary
 and returns **75**. For example, `--max-seconds 37800 --save-margin-seconds 900`
-requests a checkpoint 900 seconds before a 10h30 allocation ends. A launcher
-must use the *actual* remaining allocation time when backfill shortens the job;
+requests a checkpoint 900 seconds before a 10h30 scheduler job ends. A launcher
+must use the actual remaining job time when the scheduler grants a shorter job;
 `SLURM_JOB_END_TIME`, when supplied, is also honored as Unix seconds. Only the job
 wrapper or operator resubmits; the runner creates no scheduler jobs or watcher.
-`--allocation-updates N` is useful for short resume gates. Ordinary errors remain
+`--allocation-updates N` tests resumption after N additional updates. Ordinary errors remain
 failures. `training_complete.json` records the completed budget, all candidate
 steps, selected step, and best/final checkpoint hashes.
 
-`test.py` uses the checkpoint's embedded anchors and rejects a changed runtime
-or protocol. Detection and depth use the same checkpoint and fixed keyframes.
+`test.py` restores the checkpoint's backend settings before initializing CUDA,
+uses its embedded anchors, and rejects a changed runtime or protocol. Detection
+and depth use the same checkpoint and fixed keyframes. Its evaluation record
+includes the effective backend settings and where they came from.
 Legacy checkpoints use their matching original protocol/anchor files and are
-marked as legacy in the evaluation receipt. Their old `last.pth` files require
+marked as legacy in the evaluation record. If their backend flags were not
+recorded, inference warns and records its assumption of the historical profile.
+Their old `last.pth` files require
 their original runner; the new runtime does not silently adopt them. Reuse of
 historical results in a new comparison requires a separate equivalence audit.
-Event HDF5/cache contents require their own preparation and raw/cache equivalence
-gate; the allocation-time annotation/depth audit does not hash all event bytes.
+Event HDF5/cache contents require their own preparation and a comparison of raw
+and cached inputs; the per-job annotation/depth check does not hash all event bytes.
 
 The CPU tests require the repository's PyTorch environment and no GPU or Waymo
 installation:
@@ -234,9 +248,9 @@ CUDA_VISIBLE_DEVICES='' python -m unittest discover -s transfer/tests -v
 
 They cover nested identities, excluded-label isolation and absent-class fallback,
 source/head guards, embedded-anchor inference, and exact optimizer/RNG/sample
-order equality across interrupted training and partial validation. An actual
-DSEC forward/backward and official Waymo operator gate is required separately
-before production.
+order equality across interrupted training and partial validation, plus backend
+restoration from checkpoints. A separate GPU check must exercise DSEC
+forward/backward and the official Waymo evaluator before full training.
 
 ## Historical results in the paper (Table VI)
 

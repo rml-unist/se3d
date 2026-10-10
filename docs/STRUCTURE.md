@@ -8,6 +8,7 @@ The public entry points are `tools/train.py`, `tools/test.py`,
 | Component | Responsibility |
 |---|---|
 | `se3d/protocol.py` | canonical annotation names, split lists and condition names |
+| `se3d/backends.py` | shared source/target numerical profiles and checkpoint backend restoration |
 | `se3d/data.py` | explicit split frames, labels, sensor inputs and event cache location |
 | `se3d/models.py` | baseline construction and shared class/anchor configuration |
 | `se3d/engine.py` | inference, postprocessing and shared metric aggregation |
@@ -49,7 +50,8 @@ python tools/maintainers/package_dataset.py --source /scratch/SE3D \
     --output /scratch/release
 ```
 
-Packaging dereferences sensor links and includes the dataset MIT license.
+Packaging dereferences sensor links and includes the dataset MIT license and
+CARLA attribution notice.
 Use a new output directory for a new release: old published archives and
 checksums remain identifiable. `--meta-only` prepares the small metadata
 archive without recompressing sensor data.
@@ -59,7 +61,7 @@ archive without recompressing sensor data.
 `python tools/check_protocol.py` and `python -m unittest discover -s tests -v`
 run without the dataset, PyTorch or a GPU. CI also checks Python syntax and
 runs `python -m unittest discover -s transfer/tests -v` with CPU PyTorch.
-Those transfer tests check update budgets, stochastic optimizer/RNG resumption,
+Those tests check backend restoration, update budgets, stochastic optimizer/RNG resumption,
 partial-validation coverage and training-only subsets/anchors. They do not
 claim to run the full detector or official Waymo operator in CI. For a
 real input/inference check, use `tools/quick_check.py` as described in README.
