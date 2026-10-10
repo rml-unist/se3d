@@ -35,6 +35,12 @@ and the [weights folder](https://drive.google.com/drive/folders/1MwzAA26ub8axup1
   `SE3D_meta.tar.gz` and `SHA256SUMS`. All archives unpack into `SE3D/`.
 - `weights/`: the checkpoints listed [below](#checkpoints), with `SHA256SUMS`.
 
+The metadata refresh dated **2026-10-10** adds the dataset MIT license,
+public annotation-provenance paths, annotation fingerprints, splits and the
+current experiment protocol to `SE3D_meta.tar.gz`. Existing users only need to
+replace and extract that metadata archive and refresh `manifest.json` and
+`SHA256SUMS`; the 58 sequence archives retain their existing hashes.
+
 The complete dataset download is **432.6 GB** (decimal GB), across 58 sequence
 archives and one metadata archive; extraction occupies about **1.06 TB**.
 Download individual archives to retry or

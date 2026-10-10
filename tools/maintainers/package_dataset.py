@@ -22,6 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from se3d import REPO_ROOT
 from se3d.protocol import load_splits
+from tools.maintainers.import_legacy_dataset import public_annotation_metadata
 
 FILES = ('timestamps.txt', 'coords.txt', 'speeds.txt', 'disparity/timestamps_with_label.txt',
          'events/left/events.h5', 'events/left/rectify_map.h5',
@@ -131,19 +132,26 @@ def main():
             return
         meta = temporary / 'meta' / 'SE3D'
         meta.mkdir(parents=True)
-        for name in ('calib.txt', 'label_correction_manifest.csv', 'car_correction_decisions.json'):
-            if (source / name).is_file():
-                shutil.copyfile(source / name, meta / name)
-            else:
-                raise FileNotFoundError(source / name)
+        shutil.copyfile(source / 'calib.txt', meta / 'calib.txt')
+        for name in ('label_correction_manifest.csv', 'car_correction_decisions.json'):
+            (meta / name).write_bytes(public_annotation_metadata(name, (source / name).read_bytes()))
         if source_manifest.exists():
             public_manifest = json.loads(source_manifest.read_text())
             public_manifest.pop('source', None)
             public_manifest['sensor_storage'] = 'self-contained files in sequence archives'
+            public_manifest['provenance_paths'] = {
+                'path': 'public label/ annotation',
+                'original_path': 'public label_original/ annotation',
+            }
             (meta / 'dataset_manifest.json').write_text(json.dumps(public_manifest, indent=2) + '\n')
         shutil.copyfile(REPO_ROOT / 'docs' / 'DATASET.md', meta / 'README.md')
         shutil.copyfile(REPO_ROOT / 'docs' / 'DATASET_LICENSE.md', meta / 'LICENSE')
         shutil.copyfile(REPO_ROOT / 'docs' / 'DATASET_LICENSE.md', meta / 'DATASET_LICENSE.md')
+        shutil.copyfile(REPO_ROOT / 'docs' / 'EXPERIMENTS.md', meta / 'EXPERIMENTS.md')
+        shutil.copytree(REPO_ROOT / 'splits', meta / 'splits')
+        (meta / 'benchmarks').mkdir()
+        shutil.copyfile(REPO_ROOT / 'docs' / 'benchmarks' / 'epoch8_label_comparison.json',
+                        meta / 'benchmarks' / 'epoch8_label_comparison.json')
         archive(temporary / 'meta', ['SE3D'], output / 'SE3D_meta.tar.gz', args.processes)
         record(output, 'SE3D_meta.tar.gz', dict(bytes=(output / 'SE3D_meta.tar.gz').stat().st_size,
                sha256=sha256(output / 'SE3D_meta.tar.gz'), dataset_manifest_sha256=provenance, license='MIT'))

@@ -32,7 +32,10 @@ python tools/check_dataset.py --data-root SE3D
 ```
 SE3D/
 ├── calib.txt                       # shared by all sequences
-├── LICENSE                         # dataset MIT license in newly packaged releases
+├── LICENSE, DATASET_LICENSE.md      # dataset MIT license
+├── README.md, EXPERIMENTS.md        # data format and experiment protocol
+├── dataset_manifest.json           # annotation counts and content fingerprints
+├── splits/                         # sequence and frame splits, identical to this repository
 ├── label_correction_manifest.csv   # per-file record of the label deduplication
 ├── car_correction_decisions.json   # the 331 nested Car rows that were removed
 └── map1/
@@ -53,6 +56,15 @@ Sequence folders are named `map<town>_<day|night>_<sunny|rain|heavyrain>_moving`
 where a `_1` suffix marks a second sequence recorded in the same town and
 condition. Per-frame files are named by frame number; in sorted order, the i-th
 file of each folder belongs to the i-th line of `timestamps.txt`.
+
+The metadata refresh dated 2026-10-10 updates `SE3D_meta.tar.gz`, `manifest.json`
+and `SHA256SUMS` in the same download folder. The 58 sequence archives already
+contain `label/` and `label_original/`, and their bytes and hashes are unchanged.
+Existing users can download the refreshed metadata archive and checksum files
+and extract the metadata into their existing dataset. The correction CSV and
+Car decisions now use public paths: `path` names the corrected `label/` file,
+and `original_path` names its `label_original/` counterpart. Annotation bytes
+and the correction decisions are unchanged.
 
 ## File formats
 
@@ -164,6 +176,8 @@ metadata; ordinary downloads contain the raw events and do not need it.
 The SE3D sensor recordings, annotations, calibration, splits and documentation
 are released under the [MIT License](DATASET_LICENSE.md). It applies to the
 SE3D dataset already distributed in the `SE3D_v2` archives as well as new
-packaging. Keep the license notice when redistributing it. New archive
-packaging includes `SE3D/LICENSE`; for earlier archives, retain a copy of the
-dataset license from this repository alongside the extracted data.
+packaging. Keep the license notice when redistributing it. The refreshed
+`SE3D_meta.tar.gz` includes `SE3D/LICENSE` and `SE3D/DATASET_LICENSE.md`.
+Redistribute the metadata archive with any sequence archives, or include the
+license alongside extracted recordings. Newly packaged sequence archives also
+carry `SE3D/LICENSE` directly.

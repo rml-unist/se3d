@@ -2,11 +2,13 @@
 
 Annotations are copied into label/ and label_original/. Large sensor files and
 existing event caches are linked, so the original capture is never renamed.
-The verified annotation archive is the only place this importer reads label_5.
+Legacy annotation names are handled only by this importer.
 Use package_dataset.py to create self-contained archives from the resulting tree.
 """
 import argparse
+import csv
 import hashlib
+import io
 import json
 import os
 import shutil
@@ -49,6 +51,43 @@ def write_verified(target, content):
     else:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(content)
+
+
+def public_annotation_metadata(name, content):
+    """Preserve correction evidence while pointing it at public annotation paths."""
+    def public_path(value, version):
+        parts = value.split('/')
+        if (len(parts) != 4 or any(p in ('', '.', '..') for p in parts)
+                or parts[-2] not in ('label_5', 'label', 'label_original')):
+            raise ValueError('Unexpected annotation provenance path: ' + value)
+        parts[-2] = version
+        return '/'.join(parts)
+
+    def public_row(row):
+        row = dict(row)
+        original = public_path(row['path'], 'label_original')
+        if row.get('original_path', original) != original:
+            raise ValueError('Inconsistent original annotation path: ' + row['path'])
+        row['path'] = public_path(row['path'], 'label')
+        row['original_path'] = original
+        return row
+
+    if name == 'label_correction_manifest.csv':
+        reader = csv.DictReader(io.StringIO(content.decode('utf-8')))
+        fields = list(reader.fieldnames or [])
+        if not {'path', 'original_sha256', 'corrected_sha256'} <= set(fields):
+            raise ValueError('Missing annotation provenance columns')
+        if 'original_path' not in fields:
+            fields.insert(fields.index('path') + 1, 'original_path')
+        output = io.StringIO(newline='')
+        writer = csv.DictWriter(output, fieldnames=fields, lineterminator='\n')
+        writer.writeheader()
+        writer.writerows(public_row(row) for row in reader)
+        return output.getvalue().encode('utf-8')
+    if name == 'car_correction_decisions.json':
+        rows = [public_row(row) for row in json.loads(content)]
+        return (json.dumps(rows, indent=2) + '\n').encode('utf-8')
+    raise ValueError('Unknown annotation metadata: ' + name)
 
 
 def main():
@@ -113,7 +152,11 @@ def main():
             print(json.dumps(dict(sequence=sequence, annotation_files=len(frames))), flush=True)
         for original, public in [('corrected_label_manifest.csv', 'label_correction_manifest.csv'),
                                  ('car_correction_decisions.json', 'car_correction_decisions.json')]:
-            write_verified(output / public, archive.read(original))
+            content = public_annotation_metadata(public, archive.read(original))
+            target = output / public
+            if target.exists() and public_annotation_metadata(public, target.read_bytes()) != content:
+                raise ValueError('Existing correction metadata differs: %s' % target)
+            target.write_bytes(content)
     observed = {'files': sum(counts.values()), **{name: sum(value.values()) for name, value in totals.items()}}
     if observed != EXPECTED:
         raise ValueError('Annotation totals do not match the release: %r' % observed)
