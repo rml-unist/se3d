@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
 
 from se3d import CLASSES, CONDITIONS
-from se3d.data import condition_of, load_splits
+from se3d.protocol import add_labels_argument, condition_of, load_splits
 
 RULE = ('Per class, the median height, width and length, and the median of (y - height/2), over training '
         'boxes with a 2D height of at least 15 px and positive height, width, length and depth.')
@@ -27,7 +27,7 @@ RULE = ('Per class, the median height, width and length, and the median of (y - 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--data-root', required=True)
-    parser.add_argument('--labels', default='label')
+    add_labels_argument(parser)
     parser.add_argument('--conditions', nargs='+', choices=CONDITIONS, default=None)
     parser.add_argument('--output', required=True)
     args = parser.parse_args()

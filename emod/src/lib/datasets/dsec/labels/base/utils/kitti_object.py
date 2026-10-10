@@ -37,8 +37,7 @@ class kitti_object(object):
         self.lidar_dir = os.path.join(self.split_dir, 'velodyne')
         self.lidar_rgb_dir = os.path.join(self.split_dir, 'velodyne_rgb_insimg')
         self.lidar_align_dir = os.path.join(self.split_dir, 'velodyne_align')
-        self.label_dir = os.path.join(self.split_dir, 'label_3')
-        # self.label_dir = os.path.join(self.split_dir, 'label_4')
+        self.label_dir = os.path.join(self.split_dir, 'label')
         self.disparity_dir = os.path.join(self.split_dir, 'disparity')
         self.predicted_disparity_dir = os.path.join(self.split_dir, 'predict_disparity')
         self.res_dir = res_dir

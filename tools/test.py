@@ -21,7 +21,8 @@ import torch
 
 from se3d.data import SE3DFrames
 from se3d.engine import report_by_condition, predict
-from se3d.models import ANCHORS, MODELS, build_model, configure_classes
+from se3d.models import ANCHORS, MODELS, anchor_name, build_model, configure_classes
+from se3d.protocol import add_labels_argument
 
 
 def sha256(path):
@@ -30,9 +31,9 @@ def sha256(path):
 
 # The released checkpoints record the sha256 of the statistics file their anchors came from.
 KNOWN_ANCHORS = {
-    '6e95f124a010e5f618c85b36dc8f783c6d2dd565c1fb013ea2129873260717ba': 'original',
-    'aee2ec2d0351af6e1cafdd10c7a463f1804f8daf990d4ad26d0f63a8e5d003b8': 'original_sunny',
-    '8253bd7cd354664ec323788609ebc3d166ac476caa9356a5dddec3a74ef8e5d2': 'corrected',
+    '6e95f124a010e5f618c85b36dc8f783c6d2dd565c1fb013ea2129873260717ba': 'label_original',
+    'aee2ec2d0351af6e1cafdd10c7a463f1804f8daf990d4ad26d0f63a8e5d003b8': 'label_original_sunny',
+    '8253bd7cd354664ec323788609ebc3d166ac476caa9356a5dddec3a74ef8e5d2': 'label',
 }
 
 
@@ -42,7 +43,10 @@ def anchors_for(checkpoint, requested):
     config = checkpoint.get('config', {})
     by_name = {path.name: path for path in ANCHORS.values()}
     if config.get('anchors') in by_name:
-        return by_name[config['anchors']]
+        path = by_name[config['anchors']]
+        if config.get('anchors_sha256') and sha256(path) != config['anchors_sha256']:
+            raise ValueError('Checkpoint anchor hash does not match %s' % path)
+        return path
     if config.get('anchors_sha256') in KNOWN_ANCHORS:
         return ANCHORS[KNOWN_ANCHORS[config['anchors_sha256']]]
     raise ValueError('Cannot tell which anchors this checkpoint was trained with; pass --anchors')
@@ -68,10 +72,12 @@ def main():
     parser.add_argument('--data-root', required=True)
     parser.add_argument('--output', required=True)
     parser.add_argument('--split', default='test', choices=['test', 'val', 'test_car_filtered'])
-    parser.add_argument('--labels', default='label', help='ground-truth directory (default: deduplicated labels)')
-    parser.add_argument('--anchors', choices=sorted(ANCHORS), default=None,
+    add_labels_argument(parser)
+    parser.add_argument('--anchors', type=anchor_name, choices=sorted(ANCHORS), default=None,
                         help='anchors used in training (detected automatically for the released checkpoints)')
     parser.add_argument('--workers', type=int, default=2)
+    parser.add_argument('--cache-root', help='writable event cache root, separate from the dataset')
+    parser.add_argument('--cache-time-bounds', help='verified time-bound metadata for cache-only input')
     parser.add_argument('--save-kitti', action='store_true')
     args = parser.parse_args()
 
@@ -84,7 +90,8 @@ def main():
     np.random.seed(seed)
     model = build_model(args.model).cuda()
     model.load_state_dict(checkpoint['model'], strict=True)
-    dataset = SE3DFrames(args.data_root, args.split, label_dir=args.labels, generate_target=False)
+    dataset = SE3DFrames(args.data_root, args.split, label_dir=args.labels, generate_target=False,
+                         cache_root=args.cache_root, cache_time_bounds=args.cache_time_bounds)
     out = predict(model, dataset, args.workers)
     report = report_by_condition(out['gt'], out['predictions'], out['depth_sums'],
                                  [m['sequence'] for m in out['metadata']])

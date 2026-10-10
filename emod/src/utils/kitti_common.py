@@ -38,7 +38,7 @@ def get_image_path(idx, prefix, training=True, relative_path=True):
 
 
 def get_label_path(idx, prefix, training=True, relative_path=True):
-    return get_kitti_info_path(idx, prefix, 'label_3', '.txt', training,
+    return get_kitti_info_path(idx, prefix, 'label', '.txt', training,
                                relative_path)
 
 

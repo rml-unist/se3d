@@ -17,8 +17,9 @@ class EventDataset(torch.utils.data.Dataset):
 
     def __init__(self, root, num_of_event, stack_method, stack_size,
                  num_of_future_event=0, use_preprocessed_image=False,
-                 cache_only=False, cache_time_bounds=None, **kwargs):
+                 cache_only=False, cache_time_bounds=None, cache_root=None, **kwargs):
         self.root = root
+        self.cache_root = root if cache_root is None else os.fspath(cache_root)
         self.num_of_event = num_of_event
         self.stack_method = stack_method
         self.stack_size = stack_size
@@ -52,7 +53,7 @@ class EventDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, timestamp):
         if self.use_preprocessed_image:
-            save_path = os.path.join(self.root, self.cache_name, '%ld.npy' % timestamp)
+            save_path = os.path.join(self.cache_root, self.cache_name, '%ld.npy' % timestamp)
             if self.cache_only or os.path.exists(save_path):
                 event_data = load_trusted_cache(
                     save_path, self.stack_size, constant.EVENT_HEIGHT,
@@ -81,7 +82,7 @@ class EventDataset(torch.utils.data.Dataset):
         if not self.cache_only:
             return
         missing = [int(t) for t in timestamps if not os.path.isfile(
-            os.path.join(self.root, self.cache_name, '%ld.npy' % t))]
+            os.path.join(self.cache_root, self.cache_name, '%ld.npy' % t))]
         if missing:
             raise FileNotFoundError(
                 f"{self.root}: {len(missing)} required caches missing; "

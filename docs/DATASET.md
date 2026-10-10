@@ -24,14 +24,15 @@ The dataset is split into one archive per sequence, `SE3D_<sequence>.tar.gz`,
 plus `SE3D_meta.tar.gz`. Every archive unpacks into `SE3D/`:
 
 ```bash
+sha256sum -c SHA256SUMS
 for f in SE3D_*.tar.gz; do tar xzf "$f"; done
-sha256sum -c SHA256SUMS          # optional
 python tools/check_dataset.py --data-root SE3D
 ```
 
 ```
 SE3D/
 ├── calib.txt                       # shared by all sequences
+├── LICENSE                         # dataset MIT license in newly packaged releases
 ├── label_correction_manifest.csv   # per-file record of the label deduplication
 ├── car_correction_decisions.json   # the 331 nested Car rows that were removed
 └── map1/
@@ -73,14 +74,21 @@ file of each folder belongs to the i-th line of `timestamps.txt`.
 
 | Version | Folder | Boxes | Use |
 |---|---|---:|---|
-| Deduplicated | `label/` | 175,123 | all evaluations, recommended for training |
-| Before deduplication | `label_original/` | 184,884 | training data of the reported 40-epoch models |
+| Deduplicated | `label/` | 175,123 | default for new training, validation and test |
+| Before deduplication | `label_original/` | 184,884 | historical models and explicit comparison runs |
 
 Deduplication removed 9,761 rows: 5,153 Bus rows exported twice for the same
 vehicle, 4,277 Truck rows that duplicated Van actors, and 331 Car rows nested in
 a larger box of the same parked car. The deduplicated set has Car 95,270,
 Pedestrian 28,273, Bicycle 13,308, Motorcycle 21,448, Truck 7,394, Van 4,277 and
 Bus 5,153 boxes.
+
+Every public command uses these same two directory names with `--labels`.
+Internal numbered annotation directories are accepted only by the maintainer
+importer; they are not runtime inputs. New training uses corrected validation
+and Moderate AP40 selection even for an original-label comparison run. Both
+annotation versions are retained so that the historical experiments remain
+identifiable.
 
 Difficulty levels follow KITTI with SE3D thresholds and no truncation limit:
 
@@ -115,3 +123,47 @@ several splits under different conditions.
   submission.
 
 The validation split has no Bus instances and no nighttime sunny frames.
+Validation mAP40 therefore averages the six classes with valid Moderate GT;
+test mAP40 averages seven. A shared metric definition does not make these two
+means interchangeable. The night-rain test contains seven Car boxes and the
+night-heavy-rain test none; interpret class-specific AP with those counts.
+
+## Storage and event caches
+
+The current 59 dataset archives total 432.6 GB (decimal GB) compressed.
+The uncompressed sensor and annotation files occupy about 1,059.3 GB
+(1.06 TB, measured from the release inputs). Retaining archives, extracted
+data and all main-split event caches requires about 1.60 TB before accounting
+for checkpoints and filesystem overhead.
+The metadata archive and one sequence are sufficient for `tools/quick_check.py`;
+the full training or benchmark commands require every sequence in their split.
+
+The models read past-only, 10-channel mixed-density event stacks. On first
+access, a stack is generated from `events.h5` and stored under
+`<sequence>/events/sbn_5000000_MixedDensityEventStacking_10_0/`. At about 3 MB
+per frame, all 37,496 train/validation/test frames need roughly 110 GB of
+additional storage. This is a capacity estimate; actual cache bytes vary.
+
+Cache generation needs a writable destination. To use read-only dataset files:
+
+```bash
+python tools/prepare_event_cache.py --data-root /data/SE3D \
+    --cache-root /scratch/se3d-cache
+python tools/train.py --model emod --data-root /data/SE3D \
+    --cache-root /scratch/se3d-cache --output runs/emod
+```
+
+Use the same `--cache-root` for testing. Without it, caches are stored next to
+the events; complete existing caches can be read without write access. Cache
+files are not included in the dataset archives. `--cache-time-bounds` is for
+maintainers with a verified cache-only copy and its matching time-bound
+metadata; ordinary downloads contain the raw events and do not need it.
+
+## License
+
+The SE3D sensor recordings, annotations, calibration, splits and documentation
+are released under the [MIT License](DATASET_LICENSE.md). It applies to the
+SE3D dataset already distributed in the `SE3D_v2` archives as well as new
+packaging. Keep the license notice when redistributing it. New archive
+packaging includes `SE3D/LICENSE`; for earlier archives, retain a copy of the
+dataset license from this repository alongside the extracted data.

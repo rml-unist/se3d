@@ -1,0 +1,93 @@
+{
+  "source_epoch": 8,
+  "source_updates": 214368,
+  "source_seed": 20260909,
+  "frames": 3991,
+  "GT_moderate": {
+    "Car": 2060,
+    "Pedestrian": 379,
+    "Bicycle": 515,
+    "Motorcycle": 450,
+    "Truck": 88,
+    "Van": 55,
+    "Bus": 975
+  },
+  "four_arms_same_GT_metadata_depth_pixels": true,
+  "evaluation_labels": "label",
+  "checkpoint_rule": "fixed epoch 8; not a 40-epoch baseline",
+  "comparison_scope": "annotation version and its training-only anchors change together",
+  "arms": {
+    "EMOD_original": {
+      "metrics": {
+        "Car": 38.233534822483776,
+        "Pedestrian": 0.09085981281745141,
+        "Bicycle": 0.3403236245978459,
+        "Motorcycle": 7.724325181623707,
+        "Truck": 0.0,
+        "Van": 20.820777559526967,
+        "Bus": 0.07563694267515925,
+        "mAP40": 9.612208277674984,
+        "MAE": 1.1918168485449283,
+        "RMSE": 11.685527029756894,
+        "one_pixel_error_percent": 16.42311979356236,
+        "two_pixel_error_percent": 9.212394502433655
+      },
+      "checkpoint_sha256": "728da206adf03b4278374a072ea8c95fafccefb356bfbe4efdb52eba827d1d4d",
+      "anchors_sha256": "6e95f124a010e5f618c85b36dc8f783c6d2dd565c1fb013ea2129873260717ba"
+    },
+    "EMOD_corrected": {
+      "metrics": {
+        "Car": 39.25234543298747,
+        "Pedestrian": 0.006072874493927126,
+        "Bicycle": 0.6768792130191441,
+        "Motorcycle": 15.753191752590409,
+        "Truck": 0.0,
+        "Van": 9.855127109398806,
+        "Bus": 0.8881454737629394,
+        "mAP40": 9.490251693750382,
+        "MAE": 1.1628301462495962,
+        "RMSE": 11.627026550833435,
+        "one_pixel_error_percent": 15.66657249548429,
+        "two_pixel_error_percent": 8.950646394390969
+      },
+      "checkpoint_sha256": "d3b76af3f69dbb9b33c626ab4f43bda88f76ba7036b53e7fcd85907bb339bdf3",
+      "anchors_sha256": "8253bd7cd354664ec323788609ebc3d166ac476caa9356a5dddec3a74ef8e5d2"
+    },
+    "DSGN_original": {
+      "metrics": {
+        "Car": 66.53268325839622,
+        "Pedestrian": 1.011450693417149,
+        "Bicycle": 2.3392342520770484,
+        "Motorcycle": 33.88638771635469,
+        "Truck": 0.0,
+        "Van": 72.53302766593343,
+        "Bus": 0.4415367748701082,
+        "mAP40": 25.249188623006948,
+        "MAE": 1.5480757760951929,
+        "RMSE": 11.701803925387008,
+        "one_pixel_error_percent": 28.66018918604801,
+        "two_pixel_error_percent": 14.9954844694896
+      },
+      "checkpoint_sha256": "162ba3a688f42dd9a7588cf5e3f4afc0b6f10116bb26cb00947658cdf66ce75a",
+      "anchors_sha256": "6e95f124a010e5f618c85b36dc8f783c6d2dd565c1fb013ea2129873260717ba"
+    },
+    "DSGN_corrected": {
+      "metrics": {
+        "Car": 51.15026416366349,
+        "Pedestrian": 3.090490002517459,
+        "Bicycle": 1.5490810184243955,
+        "Motorcycle": 37.88686236989986,
+        "Truck": 0.0,
+        "Van": 65.66575059634154,
+        "Bus": 1.7169200909149922,
+        "mAP40": 23.008481177394533,
+        "MAE": 1.530316047073325,
+        "RMSE": 11.717122251239324,
+        "one_pixel_error_percent": 26.998966013806772,
+        "two_pixel_error_percent": 14.276189102652001
+      },
+      "checkpoint_sha256": "5167d339c9c18bf7add4cdc61b00063e1fa12235eb6883a6ef93b0738fb993b5",
+      "anchors_sha256": "8253bd7cd354664ec323788609ebc3d166ac476caa9356a5dddec3a74ef8e5d2"
+    }
+  }
+}

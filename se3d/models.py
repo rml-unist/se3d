@@ -18,10 +18,17 @@ from lib.dsgn.loss3d import RPN3DLoss
 
 MODELS = ('emod', 'dsgn_event')
 ANCHORS = {
-    'original': ANCHORS_ROOT / 'se3d_anchors_label_original.json',
-    'corrected': ANCHORS_ROOT / 'se3d_anchors_label.json',
-    'original_sunny': ANCHORS_ROOT / 'se3d_anchors_label_original_sunny.json',
+    'label_original': ANCHORS_ROOT / 'se3d_anchors_label_original.json',
+    'label': ANCHORS_ROOT / 'se3d_anchors_label.json',
+    'label_original_sunny': ANCHORS_ROOT / 'se3d_anchors_label_original_sunny.json',
+    'label_sunny': ANCHORS_ROOT / 'se3d_anchors_label_sunny.json',
 }
+ANCHOR_ALIASES = {'original': 'label_original', 'corrected': 'label',
+                  'original_sunny': 'label_original_sunny', 'corrected_sunny': 'label_sunny'}
+
+
+def anchor_name(value):
+    return ANCHOR_ALIASES.get(value, value)
 
 
 def configure_classes(anchors_path):
@@ -30,14 +37,8 @@ def configure_classes(anchors_path):
     Call this before building datasets or models: target generation and the
     detection heads both read cfg.
     """
-    anchors = json.loads(Path(anchors_path).read_text())['training_anchor_dimensions']
-    cfg.class_names = list(CLASSES)
-    cfg.num_classes = len(CLASSES)
-    cfg.valid_classes = list(range(1, len(CLASSES) + 1))
-    for key, field in [('ANCHORS_HEIGHT', 'height'), ('ANCHORS_WIDTH', 'width'),
-                       ('ANCHORS_LENGTH', 'length'), ('ANCHORS_Y', 'center_y')]:
-        setattr(cfg.RPN3D, key, [anchors[name][field] for name in CLASSES])
-    return cfg
+    from configs.se3d_revision import configure_seven_classes
+    return configure_seven_classes(anchors_path)
 
 
 class DSGNEvent(nn.Module):

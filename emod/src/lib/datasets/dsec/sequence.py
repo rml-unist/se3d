@@ -16,22 +16,13 @@ class SequenceDataset(torch.utils.data.Dataset):
     _PATH_DICT = {
         'event': 'events',
         'disparity': 'disparity',
-        'labels': 'label_3'
+        'labels': 'label'
     }
-    # _PATH_DICT = {
-    #     'event': 'events',
-    #     'disparity': 'disparity',
-    #     'labels': 'label_4'
-    # }
-    # HEIGHT = 480
-    # WIDTH = 1284
     HEIGHT = 480
     WIDTH = 640
-    # HEIGHT = 480
-    # WIDTH = 640
 
     def __init__(self, root, freeze_mode, split, sampling_ratio, event_cfg, disparity_cfg, labels_cfg,
-                 crop_height, crop_width, num_workers=0):
+                 crop_height, crop_width, num_workers=0, validate_cache=True):
         split = "validation" if split == "val" else split
         self.root = root
         self.split = split
@@ -92,7 +83,7 @@ class SequenceDataset(torch.utils.data.Dataset):
 
         self.timestamps = self.timestamps[[idx for idx in range(0, len(self.timestamps), sampling_ratio)]]
 
-        if hasattr(self.event_dataset, 'validate_cache_paths'):
+        if validate_cache and hasattr(self.event_dataset, 'validate_cache_paths'):
             self.event_dataset.validate_cache_paths(self.timestamps)
 
         # Transforms

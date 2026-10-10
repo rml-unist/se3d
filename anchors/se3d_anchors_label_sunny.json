@@ -1,0 +1,57 @@
+{
+  "labels": "label",
+  "split": "train",
+  "conditions": "day_sunny, night_sunny",
+  "rule": "Per class, the median height, width and length, and the median of (y - height/2), over training boxes with a 2D height of at least 15 px and positive height, width, length and depth.",
+  "training_anchor_dimensions": {
+    "Car": {
+      "samples": 13778,
+      "height": 1.5347249507904053,
+      "width": 1.970275640487671,
+      "length": 4.717525005340576,
+      "center_y": 0.8826038556933953
+    },
+    "Pedestrian": {
+      "samples": 3288,
+      "height": 1.8600000143051147,
+      "width": 0.3753577768802643,
+      "length": 0.3753577768802643,
+      "center_y": 0.6082189557454274
+    },
+    "Bicycle": {
+      "samples": 2643,
+      "height": 1.6197669506072998,
+      "width": 0.6000000238418579,
+      "length": 1.5,
+      "center_y": 0.8410343302986301
+    },
+    "Motorcycle": {
+      "samples": 2506,
+      "height": 1.5900908708572388,
+      "width": 0.8999999761581421,
+      "length": 1.600000023841858,
+      "center_y": 0.8603571953050456
+    },
+    "Truck": {
+      "samples": 148,
+      "height": 3.4619433879852295,
+      "width": 2.8910882472991943,
+      "length": 7.935710430145264,
+      "center_y": -0.07378734290280131
+    },
+    "Van": {
+      "samples": 667,
+      "height": 1.9872066974639893,
+      "width": 1.77456533908844,
+      "length": 4.442183971405029,
+      "center_y": 0.6610992917330758
+    },
+    "Bus": {
+      "samples": 332,
+      "height": 4.252848148345947,
+      "width": 3.9441518783569336,
+      "length": 10.272685050964355,
+      "center_y": -0.46961043008667125
+    }
+  }
+}

@@ -19,15 +19,17 @@ import yaml
 from easydict import EasyDict
 
 from se3d import EMOD_ROOT
-from se3d.data import load_splits
+from se3d.protocol import load_splits
 
 
 def prepare(job):
-    data_root, sequence, timestamps = job
+    data_root, cache_root, sequence, timestamps = job
     from lib.datasets.dsec.event.sbn.dataset import EventDataset
     conf = EasyDict(yaml.safe_load((EMOD_ROOT / 'configs' / 'config.yaml').read_text()))
     params = copy.deepcopy(dict(conf.DATASET.TRAIN.PARAMS.event_cfg.PARAMS))
     params['use_preprocessed_image'] = True
+    if cache_root is not None:
+        params['cache_root'] = str(Path(cache_root) / sequence / 'events')
     dataset = EventDataset(root=str(Path(data_root) / sequence / 'events'), **params)
     for timestamp in timestamps:
         dataset[timestamp]
@@ -37,6 +39,7 @@ def prepare(job):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--data-root', required=True)
+    parser.add_argument('--cache-root', help='writable event cache root, separate from the dataset')
     parser.add_argument('--splits', nargs='+', default=['train', 'val', 'test'],
                         choices=['train', 'val', 'test', 'test_car_filtered'])
     parser.add_argument('--processes', type=int, default=4)
@@ -45,7 +48,7 @@ def main():
     for split in args.splits:
         for sequence, items in load_splits()['frames'][split].items():
             frames.setdefault(sequence, set()).update(t for t, _ in items)
-    jobs = [(args.data_root, sequence, sorted(timestamps)) for sequence, timestamps in sorted(frames.items())]
+    jobs = [(args.data_root, args.cache_root, sequence, sorted(timestamps)) for sequence, timestamps in sorted(frames.items())]
     with Pool(args.processes) as pool:
         for done, (sequence, count) in enumerate(pool.imap_unordered(prepare, jobs), 1):
             print('[%d/%d] %s: %d frames' % (done, len(jobs), sequence, count), flush=True)
