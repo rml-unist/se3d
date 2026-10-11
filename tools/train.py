@@ -3,7 +3,7 @@
 The release defaults use label/ for training and validation, and select the
 highest validation Moderate 3D mAP40 (earliest epoch on ties). Validation uses
 the full, fixed validation split, including for a sunny-training-only model.
-See docs/EXPERIMENTS.md for the historical paper protocol and new run matrix.
+See docs/EXPERIMENTS.md for historical protocols and training options.
 
 Repeating the same command resumes optimizer, RNG, epoch and cursor from
 last.pth. A time limit or termination signal saves progress and returns 75;
@@ -97,6 +97,8 @@ def main():
                         help='validation interval in updates (default: one training epoch)')
     parser.add_argument('--seed', type=int, default=20260909)
     parser.add_argument('--workers', type=int, default=2)
+    parser.add_argument('--save-every', type=int, default=200,
+                        help='updates between resumable checkpoints (default: 200)')
     parser.add_argument('--keep-epochs', nargs='*', type=int, default=[],
                         help='also save model weights at these fixed epochs; final epoch is always kept')
     parser.add_argument('--keep-updates', nargs='*', type=int, default=[214368],
@@ -110,7 +112,8 @@ def main():
     parser.add_argument('--limit-val', type=int, default=None, help='debug: validation frames')
     args = parser.parse_args()
     if args.epochs < 1 or args.workers < 0 or any(x is not None and x < 1 for x in
-            (args.limit_train, args.limit_val, args.max_seconds, args.updates, args.validate_every, args.allocation_updates)):
+            (args.limit_train, args.limit_val, args.max_seconds, args.updates, args.validate_every,
+             args.allocation_updates, args.save_every)):
         parser.error('epochs, time and frame limits must be positive; workers must be nonnegative')
     try:
         backend = configure_backend(args.backend_profile, args.strict_determinism)
@@ -267,7 +270,7 @@ def main():
                     print(json.dumps(record), flush=True)
                     with (run / 'training.jsonl').open('a') as f:
                         f.write(json.dumps(record) + '\n')
-                if step % 200 == 0:
+                if step % args.save_every == 0:
                     save()
                 if step in config['keep_updates']:
                     atomic_save(dict(model=model.state_dict(), epoch=epoch + 1, step=step, config=config),

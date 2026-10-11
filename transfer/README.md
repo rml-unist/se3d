@@ -1,4 +1,4 @@
-# Transfer to DSEC-3DOD (paper Section VI)
+# Transfer to DSEC-3DOD (paper Section IV-F)
 
 These scripts run the controlled transfer experiments: each model is trained
 on real DSEC-3DOD data twice with the same target data, schedule and seed, once
@@ -114,7 +114,10 @@ metrics_env/bin/python transfer/evaluate_waymo.py results/.../fixed_test_predict
 ```
 
 `test.py` uses the checkpoint's anchors and backend settings, and checks the
-runtime and protocol. Older checkpoints require their matching protocol and
+protocol. Differences from the training code produce a warning and both code
+fingerprints are recorded in `evaluation_config.json`. Reusing partial
+evaluation results requires the same evaluation code, weights and inputs.
+Older checkpoints require their matching protocol and
 anchor files. Missing backend flags produce a warning and use the historical
 profile. Older `last.pth` files require their original training runner.
 
@@ -122,6 +125,8 @@ profile. Older `last.pth` files require their original training runner.
 
 Repeat the same command and output directory to resume from `last.pth`.
 Use a new output directory when changing code, inputs or training settings.
+Ctrl+C, SIGTERM and SIGUSR1 save progress at a safe boundary and return exit
+status 75. `--save-every N` controls the periodic checkpoint interval.
 See `python transfer/train.py --help` for checkpoint and time-limit options.
 
 ## Tests

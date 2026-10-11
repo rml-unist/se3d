@@ -11,7 +11,6 @@ import numpy as np
 
 from lib.dsgn.utils.bounding_box import compute_corners, quan_to_angle, \
     angle_to_quan, quan_to_rotation, compute_corners_sc
-# from lib.dsgn.layers import BuildCostVolume
 
 def project_rect_to_image(pts_3d_rect, P):
     n = pts_3d_rect.shape[0]

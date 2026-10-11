@@ -35,14 +35,14 @@ def arguments(argv=None):
     parser.add_argument('--source', help='SE3D checkpoint for --init se3d')
     parser.add_argument('--source-sha256', help='require this immutable source checkpoint hash')
     parser.add_argument('--source-seed', type=int, help='require this source training seed')
-    parser.add_argument('--source-step', type=int, help='require this source optimizer step (new matrix: 214368)')
+    parser.add_argument('--source-step', type=int, help='require this source optimizer step')
     parser.add_argument('--dsec-root', required=True, help='DSEC train/ directory')
     parser.add_argument('--labels-root', required=True, help='DSEC-3DOD annotation directory')
     parser.add_argument('--cache-root', help='event stacks from prepare_cache.py')
     parser.add_argument('--metrics-python', help='interpreter with official Waymo CPU metrics')
     parser.add_argument('--output', required=True)
     parser.add_argument('--protocol', default=str(protocol.PROTOCOL))
-    parser.add_argument('--subset', help='frozen subset.json from prepare_subsets.py')
+    parser.add_argument('--subset', help='optional training-subset JSON')
     parser.add_argument('--anchors', help='subset anchors.json; required with --subset')
     parser.add_argument('--fallback', default=str(protocol.FALLBACK))
     parser.add_argument('--epochs', type=int, help='legacy budget shorthand: epochs times the full train pool')
@@ -139,8 +139,7 @@ def run(args, budget):
     code = runtime.code_fingerprint(common.REPO_ROOT)
     train_size = len(base['splits']['train'])
     legacy_cycle = min(train_size, args.limit_train) if args.limit_train else train_size
-    # An explicit --epochs retains short historical debug budgets. The new matrix
-    # always passes --updates/--validate-every, including for smaller label subsets.
+    # An explicit --epochs retains the historical full-pool epoch shorthand.
     updates = args.updates if args.updates is not None else (args.epochs * legacy_cycle if args.epochs else 62496)
     interval = args.validate_every if args.validate_every is not None else (legacy_cycle if args.epochs else 3906)
     candidates = runtime.validation_steps(updates, interval)

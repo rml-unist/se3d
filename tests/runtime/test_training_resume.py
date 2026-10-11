@@ -41,12 +41,18 @@ class TinyModel(torch.nn.Module):
 
 
 class TrainingResumeTests(unittest.TestCase):
-    def run_training(self, directory, interrupt=None, extra=()):
+    def run_training(self, directory, interrupt=None, extra=(), save_steps=None):
         def evaluate(model, *args, **kwargs):
             model.eval()
             return {'3d_mAP40': [1., 1., 1.], 'per_class': {'Car': {'valid_gt': [1, 1, 1]}}}, None
 
         original_load = torch.load
+        original_save = train.atomic_save
+
+        def save(value, path):
+            if save_steps is not None and path.name == 'last.pth':
+                save_steps.append(value['step'])
+            return original_save(value, path)
 
         def load_cpu(*args, **kwargs):
             kwargs['map_location'] = 'cpu'
@@ -68,6 +74,7 @@ class TrainingResumeTests(unittest.TestCase):
                 (train, 'model_args', lambda index: {'index': index}),
                 (train, 'loader', lambda dataset, indices, *args: iter(indices)),
                 (train, 'evaluate', evaluate),
+                (train, 'atomic_save', save),
                 (torch.cuda, 'get_device_name', lambda: 'cpu'),
                 (torch.cuda, 'manual_seed_all', lambda *args: None),
                 (torch.cuda, 'get_rng_state_all', lambda: []),
@@ -86,16 +93,33 @@ class TrainingResumeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             reference, resumed = Path(temporary) / 'reference', Path(temporary) / 'resumed'
             self.assertEqual(self.run_training(reference), 0)
-            self.assertEqual(self.run_training(resumed, interrupt_second_forward), 75)
+            self.assertEqual(self.run_training(resumed, interrupt_second_forward,
+                                               extra=('--save-every', '1')), 75)
             state = torch.load(resumed / 'last.pth', weights_only=False)
             self.assertEqual((state['step'], state['cursor']), (2, 2))
             self.assertEqual(state['model']['bn.num_batches_tracked'].item(), 2)
             self.assertFalse((resumed / 'training_complete.json').exists())
-            self.assertEqual(self.run_training(resumed), 0)
+            self.assertEqual(self.run_training(resumed, extra=('--save-every', '7')), 0)
             expected = torch.load(reference / 'last.pth', weights_only=False)
             actual = torch.load(resumed / 'last.pth', weights_only=False)
             self.assertEqual(actual['step'], 3)
             self.assertEqual(actual['model']['bn.num_batches_tracked'].item(), 3)
+            torch.testing.assert_close(actual['model'], expected['model'], rtol=0, atol=0)
+            torch.testing.assert_close(actual['optimizer'], expected['optimizer'], rtol=0, atol=0)
+            self.assertTrue(torch.equal(actual['torch_rng'], expected['torch_rng']))
+
+    def test_checkpoint_interval_changes_writes_without_changing_training(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            reference, frequent = Path(temporary) / 'reference', Path(temporary) / 'frequent'
+            default_steps, frequent_steps = [], []
+            self.assertEqual(self.run_training(reference, save_steps=default_steps), 0)
+            self.assertEqual(self.run_training(frequent, extra=('--save-every', '2'),
+                                               save_steps=frequent_steps), 0)
+            self.assertNotIn(2, default_steps)
+            self.assertIn(2, frequent_steps)
+            expected = torch.load(reference / 'last.pth', weights_only=False)
+            actual = torch.load(frequent / 'last.pth', weights_only=False)
+            self.assertEqual(actual['config'], expected['config'])
             torch.testing.assert_close(actual['model'], expected['model'], rtol=0, atol=0)
             torch.testing.assert_close(actual['optimizer'], expected['optimizer'], rtol=0, atol=0)
             self.assertTrue(torch.equal(actual['torch_rng'], expected['torch_rng']))
