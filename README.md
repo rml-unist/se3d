@@ -22,7 +22,7 @@ training with corrected annotations and AP40 model selection.
 | `dsgn_event/` | DSGN-event: the DSGN network adapted to 10-channel event stacks |
 | `transfer/` | scratch vs. SE3D-initialized training on DSEC-3DOD ([transfer/README.md](transfer/README.md)) |
 | `docs/DATASET.md` | sensors, file formats, annotations and splits |
-| `docs/EXPERIMENTS.md` | annotation versions, model selection, seeds and experiment budgets |
+| `docs/EXPERIMENTS.md` | annotation versions, checkpoint selection and training settings |
 
 ## Download
 
@@ -208,8 +208,8 @@ no augmentation, and loss 0.5 × depth + 0.5 × detection. They train for
 1,071,840 updates and validate every 26,796 updates. `best.pth` has the highest
 validation Moderate 3D mAP40 over classes with ground truth; ties keep the
 earliest update. Use it for both test tasks. Repeating an interrupted command
-resumes from `last.pth`. The [full protocol](docs/EXPERIMENTS.md) lists seeds,
-comparison runs and saved intermediate checkpoints.
+resumes from `last.pth`. The [full protocol](docs/EXPERIMENTS.md) describes
+checkpoint selection and saved intermediate weights.
 
 `--labels label|label_original` selects the training annotations. Validation
 defaults to `label`; change it with `--validation-labels` and select AP11 or

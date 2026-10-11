@@ -1,9 +1,9 @@
-"""Shared pieces of the DSEC-3DOD transfer experiments (paper Section VI).
+"""Shared pieces of the DSEC-3DOD transfer experiments (paper Section IV-F).
 
 Keyframes, the internal model-selection split and the target anchors are fixed
 by protocol/dsec_paired_v2.json and protocol/dsec_training_anchors_v2.json.
-The protocol stores the cluster paths it was built from; the scripts replace
-them with --dsec-root and --labels-root.
+The protocol uses dataset-relative paths and root placeholders resolved with
+--dsec-root and --labels-root.
 """
 import json
 import os
@@ -206,6 +206,7 @@ def _score_predictions(inputs, output, metrics_python, binding, check_stop):
             if time.monotonic() - started > 1800:
                 raise TimeoutError('Waymo CPU evaluation exceeded 1800 seconds')
             time.sleep(.25)
+        check_stop()  # Ctrl+C can stop the metric subprocess before the next poll.
         if process.returncode:
             raise subprocess.CalledProcessError(process.returncode, process.args)
     finally:

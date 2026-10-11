@@ -1,8 +1,7 @@
 # Training protocols
 
-This page covers the historical training commands, corrected-label experiments
-and the 8-epoch annotation comparison. Results for the corrected-label
-40-epoch experiments are pending.
+This page covers historical training commands, annotation and backend options,
+and the 8-epoch annotation comparison.
 
 ## Historical paper protocol (Tables IV and V)
 
@@ -33,16 +32,16 @@ code. The original effective settings were not fully recorded, so retraining
 may produce different weights and scores. Use the published checkpoints to
 evaluate the historical models.
 
-## Source training and model selection
+## Training with corrected labels
 
 Corrected-label runs use `label/` for training, validation and test. Anchors
 are computed only from the corresponding training frames and annotations.
 The existing split is fixed at 26,796 training, 6,709 validation and 3,991 test
 frames. The seven class definitions, IoUs and difficulty thresholds are fixed.
 
-Every run uses 1,071,840 optimizer updates, batch size 1, Adam with learning
-rate and weight decay 1e-4, no augmentation, and loss weights 0.5 for disparity
-and 0.5 for detection. The learning-rate schedule is constant, and each seed
+The corrected-label commands below use 1,071,840 optimizer updates, batch size
+1, Adam with learning rate and weight decay 1e-4, no augmentation, and loss
+weights 0.5 for disparity and 0.5 for detection. The learning-rate schedule is constant, and training
 starts from random initialization.
 
 Validate every 26,796 updates on the same full, corrected validation split:
@@ -55,21 +54,9 @@ Validation mAP averages six classes because Bus has no validation ground truth;
 test mAP averages seven. The [split table](DATASET.md#splits) lists condition
 coverage, including the absence of night-sunny validation frames.
 
-| Training arm | Seeds | Training frames per pass | Updates | Validation |
-|---|---|---:|---:|---|
-| EMOD, release labels, all conditions | 20260909/10/11 | 26,796 | 1,071,840 | corrected, full split, AP40 |
-| DSGN-event, release labels, all conditions | 20260909/10/11 | 26,796 | 1,071,840 | corrected, full split, AP40 |
-| EMOD, release labels, sunny training only | 20260909/10/11 | 10,233 | 1,071,840 | corrected, full split, AP40 |
-| EMOD, original-label comparison | 20260909 | 26,796 | 1,071,840 | corrected, full split, AP40 |
-| DSGN-event, original-label comparison | 20260909 | 26,796 | 1,071,840 | corrected, full split, AP40 |
-
 Sunny training uses sunny-training anchors and 104 complete passes plus 7,608
-updates of the next pass. Both arms use the same full-condition validation
-split, including non-sunny labels for model selection.
-
-The original-label controls use original-training anchors and corrected
-validation. They measure the combined annotation-and-anchor change at one
-paired seed.
+updates of the next pass. Validation uses the full-condition split, including
+non-sunny labels for model selection.
 
 ```bash
 python tools/train.py --model dsgn_event --data-root /data/SE3D \
@@ -80,11 +67,6 @@ python tools/train.py --model emod --data-root /data/SE3D \
     --conditions day_sunny night_sunny --updates 1071840 --validate-every 26796 \
     --backend-profile historical --seed 20260909 --output runs/emod_sunny_s20260909
 ```
-
-Repeat primary runs with seeds 20260910 and 20260911. Summarize each model and
-training arm separately using all three seeds: individual results, mean and
-sample standard deviation (`ddof=1`), including per-class AP and disparity by
-condition.
 
 ## Backend settings and determinism
 
@@ -124,6 +106,9 @@ settings and their source. Changing profiles requires a new output directory.
 
 Repeat the same command and output directory to resume from `last.pth`.
 Use a new output directory when changing code, inputs or training settings.
+`--save-every N` sets the interval between resumable checkpoints (default: 200
+updates). This interval can change on resume. Validation, epoch boundaries
+and graceful interruption also save a checkpoint.
 See `python tools/train.py --help` for checkpoint and time-limit options.
 
 ## Earlier annotation comparison

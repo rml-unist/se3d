@@ -76,7 +76,7 @@ def code_fingerprint(root):
 
 def environment():
     packages = {}
-    for name in ('numpy', 'torch', 'torchvision', 'opencv-python', 'h5py', 'PyYAML', 'easydict'):
+    for name in ('numpy', 'torch', 'torchvision', 'opencv-python-headless', 'h5py', 'PyYAML', 'easydict'):
         try:
             packages[name] = importlib.metadata.version(name)
         except importlib.metadata.PackageNotFoundError:
@@ -137,7 +137,7 @@ def run_lock(run):
 
 
 class Budget:
-    """SIGUSR1/SIGTERM, elapsed-time limit, and an optional Slurm end time.
+    """SIGINT/SIGUSR1/SIGTERM, elapsed-time limit, and an optional Slurm end time.
 
     SLURM_JOB_END_TIME must be Unix seconds if supplied by a launch wrapper.
     The margin covers model/optimizer and partial-prediction checkpoint I/O.
@@ -154,7 +154,7 @@ class Budget:
         self.handlers = {}
 
     def __enter__(self):
-        for signum in (signal.SIGTERM, signal.SIGUSR1):
+        for signum in (signal.SIGINT, signal.SIGTERM, signal.SIGUSR1):
             self.handlers[signum] = signal.signal(signum, self._signal)
         return self
 

@@ -2,13 +2,14 @@
 
 Uses the checkpoint's own embedded anchors (including subset-only anchors).
 Writes fixed_test_predictions.pkl and test_metrics.json. Inference resumes
-from a bound partial prefix after SIGUSR1/SIGTERM or the allocation margin.
+from a bound partial prefix after SIGINT/SIGUSR1/SIGTERM or the allocation margin.
 Legacy checkpoints require their matching protocol and anchor files; their
 missing runtime provenance is recorded explicitly in the evaluation receipt.
 """
 import argparse
 import json
 import sys
+import warnings
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -54,7 +55,8 @@ def run(args, budget):
         raise ValueError('Checkpoint requires its matching protocol file')
     code = runtime.code_fingerprint(common.REPO_ROOT)
     if config.get('code_sha256') and config['code_sha256'] != code['sha256']:
-        raise ValueError('Inference code differs from the frozen training code')
+        warnings.warn('Evaluation code differs from the checkpoint training code; '
+                      'both fingerprints are recorded in evaluation_config.json.', RuntimeWarning)
     anchors = checkpoint_anchors(state, args.anchors)
     common.configure(anchors)
     base = protocol.load_protocol(args.protocol)
@@ -64,7 +66,8 @@ def run(args, budget):
     # environment while preventing reuse of partial results across environments.
     identity = dict(checkpoint_sha256=checkpoint_hash, selected_step=state.get('step'),
                     selected_epoch=state.get('epoch'), selection_score=state.get('validation_score'),
-                    training_config_sha256=protocol.json_digest(config), code_sha256=code['sha256'],
+                    training_config_sha256=protocol.json_digest(config),
+                    training_code_sha256=config.get('code_sha256'), code_sha256=code['sha256'],
                     protocol_sha256=protocol_hash, anchor_payload_sha256=protocol.json_digest(anchors),
                     test_inputs=dict(rows_sha256=inputs['rows_sha256'], files_sha256=inputs['files_sha256']),
                     environment=runtime.environment(), metrics_environment=runtime.metrics_environment(args.metrics_python),

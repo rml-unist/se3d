@@ -6,8 +6,6 @@ from lib.dsgn.utils.torch_utils import *
 
 from functools import partial
 
-# from lib.dsgn.layers.sigmoid_focal_loss import SigmoidFocalLoss
-# from lib.dsgn.layers.iou_loss import IOULoss
 
 INF = 100000000
 

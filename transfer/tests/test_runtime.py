@@ -2,6 +2,7 @@ import json
 import os
 import random
 import signal
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -18,7 +19,8 @@ class RuntimeTests(unittest.TestCase):
     def setUp(self):
         common.configure()
 
-    def run_tiny(self, directory, trace, allocation_updates=0, interrupt_validation=False, config_edit=None):
+    def run_tiny(self, directory, trace, allocation_updates=0, interrupt_validation=False,
+                 config_edit=None, interrupt_step=None):
         random.seed(17)
         np.random.seed(17)
         torch.manual_seed(17)
@@ -47,6 +49,8 @@ class RuntimeTests(unittest.TestCase):
             trace.append(index)
             x = torch.tensor([index / 5, 1., -1.])
             value = model(x).sum()
+            if len(trace) == interrupt_step:
+                os.kill(os.getpid(), signal.SIGINT)
             target = random.random() + np.random.random() + torch.rand(()).item()
             return (value - target).square(), {}
 
@@ -76,9 +80,10 @@ class RuntimeTests(unittest.TestCase):
             torch.rand(3)
             return dict(depth=common._depth_summary(progress.sums)), 1.0  # deliberate ties
 
-        result = runtime.train_loop(model, optimizer, directory, config, {}, initialization,
-                                    batches, loss, validate, save_every=3, keep_updates=[8],
-                                    allocation_updates=allocation_updates)
+        with patch.dict(os.environ, {'SLURM_JOB_END_TIME': ''}), runtime.Budget() as budget:
+            result = runtime.train_loop(model, optimizer, directory, config, {}, initialization,
+                                        batches, loss, validate, check_stop=budget.check,
+                                        save_every=3, keep_updates=[8], allocation_updates=allocation_updates)
         return result, torch.load(Path(directory) / 'last.pth', map_location='cpu', weights_only=False), seen_validation
 
     def assert_nested_equal(self, a, b):
@@ -137,6 +142,24 @@ class RuntimeTests(unittest.TestCase):
                 self.assertEqual(json.loads((Path(reference) / ('validation_step_%07d_metrics.json' % step)).read_text()),
                                  json.loads((Path(resumed) / ('validation_step_%07d_metrics.json' % step)).read_text()))
 
+    def test_sigint_finishes_update_and_resumes_identically(self):
+        with tempfile.TemporaryDirectory() as reference, tempfile.TemporaryDirectory() as resumed:
+            expected_order, actual_order = [], []
+            _, expected, expected_validation = self.run_tiny(reference, expected_order)
+            handler = signal.getsignal(signal.SIGINT)
+            code, interrupted, _ = self.run_tiny(resumed, actual_order, interrupt_step=3)
+            self.assertEqual(code, 75)
+            self.assertEqual(signal.getsignal(signal.SIGINT), handler)
+            self.assertEqual((interrupted['step'], interrupted['cursor']), (3, 3))
+            receipt = json.loads((Path(resumed) / 'allocation_exit.json').read_text())
+            self.assertIn('SIGINT', receipt['reason'])
+            self.assertFalse((Path(resumed) / 'training_complete.json').exists())
+            code, actual, actual_validation = self.run_tiny(resumed, actual_order)
+            self.assertEqual(code, 0)
+            self.assertEqual(actual_order, expected_order)
+            self.assertEqual(actual_validation, expected_validation)
+            self.assert_nested_equal(actual, expected)
+
     def test_changed_configuration_cannot_resume(self):
         with tempfile.TemporaryDirectory() as run:
             self.run_tiny(run, [], allocation_updates=2)
@@ -174,6 +197,24 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(runtime.tensor_state_sha256(values), runtime.tensor_state_sha256(dict(reversed(list(values.items())))))
         self.assertNotEqual(runtime.tensor_state_sha256({'x': torch.ones(2)}),
                             runtime.tensor_state_sha256({'x': torch.ones(1, 2)}))
+
+    def test_metric_worker_exit_honors_pending_sigint_without_hiding_worker_errors(self):
+        with tempfile.TemporaryDirectory() as run:
+            inputs = Path(run) / 'predictions.pkl'
+            inputs.write_bytes(b'predictions')
+            for interrupted in (False, True):
+                with self.subTest(interrupted=interrupted):
+                    def finished():
+                        if interrupted:
+                            os.kill(os.getpid(), signal.SIGINT)
+                        return 1
+
+                    process = SimpleNamespace(poll=finished, returncode=1, args=['metric worker'])
+                    with patch.dict(os.environ, {'SLURM_JOB_END_TIME': ''}), runtime.Budget() as budget:
+                        with patch.object(common.subprocess, 'Popen', return_value=process):
+                            with self.assertRaises(runtime.Preempted if interrupted else subprocess.CalledProcessError):
+                                common._score_predictions(inputs, Path(run) / 'metrics.json',
+                                                          'unused interpreter', {}, budget.check)
 
     def test_full_budget_has_sixteen_common_selection_slots(self):
         candidates = runtime.validation_steps(62496, 3906)
