@@ -1,6 +1,6 @@
 """Score a target checkpoint on the 1,178 fixed DSEC-3DOD test keyframes.
 
-Uses the checkpoint's own embedded anchors (including subset-only anchors).
+Uses the checkpoint's own embedded anchors.
 Writes fixed_test_predictions.pkl and test_metrics.json. Inference resumes
 from a bound partial prefix after SIGINT/SIGUSR1/SIGTERM or the allocation margin.
 Legacy checkpoints require their matching protocol and anchor files; their
