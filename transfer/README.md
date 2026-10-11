@@ -138,7 +138,7 @@ installation:
 CUDA_VISIBLE_DEVICES='' python -m unittest discover -s transfer/tests -v
 ```
 
-These check subset selection, anchors, source initialization, backend settings
+These check the fixed training split, anchors, source initialization, backend settings
 and interrupted training/validation with small CPU models.
 
 ## Historical results in the paper (Table VI)

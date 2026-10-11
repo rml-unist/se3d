@@ -52,7 +52,7 @@ class InitializationTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     train.source_checkpoint(bad)
 
-    def test_inference_uses_embedded_subset_anchors(self):
+    def test_inference_uses_embedded_checkpoint_anchors(self):
         anchors = json.loads(common.ANCHORS.read_text())
         anchors['training_anchor_dimensions']['Vehicle']['height'] = 9.25
         state = dict(schema=runtime.SCHEMA, anchors=anchors,

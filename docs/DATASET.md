@@ -63,7 +63,8 @@ where a `_1` suffix marks a second sequence recorded in the same town and
 condition. Per-frame files are named by frame number; in sorted order, the i-th
 file of each folder belongs to the i-th line of `timestamps.txt`.
 
-The 2026-10-10 metadata update adds license notices and public annotation paths.
+The 2026-10-11 metadata update includes current documentation, license notices
+and public annotation paths.
 Existing users can update `SE3D_meta.tar.gz`, `manifest.json` and `SHA256SUMS`;
 the sequence archives are unchanged. In the correction CSV and Car decisions,
 `path` names the corrected `label/` file and `original_path` its

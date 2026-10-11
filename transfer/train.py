@@ -1,11 +1,11 @@
 """Paired DSEC-3DOD transfer with a fixed optimizer-update/validation budget.
 
 Default: 62,496 updates, validation every 3,906 updates (16 candidates),
-batch size 1, Adam 1e-4/weight decay 1e-4, no augmentation. Smaller labeled
-subsets cycle their own seeded permutations under the identical update budget.
+batch size 1, Adam 1e-4/weight decay 1e-4, no augmentation. Training cycles
+seeded permutations of the fixed 3,906 training keyframes.
 Only validation selects best.pth; exact ties retain the earlier candidate.
 
-Resume with the same command. SIGUSR1/SIGTERM or an allocation time/update
+Resume with the same command. SIGINT/SIGUSR1/SIGTERM or an allocation time/update
 limit saves last.pth and partial validation, then exits 75. A job wrapper may
 resubmit this status. final.pth and training_complete.json mark full completion.
 """
@@ -42,9 +42,6 @@ def arguments(argv=None):
     parser.add_argument('--metrics-python', help='interpreter with official Waymo CPU metrics')
     parser.add_argument('--output', required=True)
     parser.add_argument('--protocol', default=str(protocol.PROTOCOL))
-    parser.add_argument('--subset', help='optional training-subset JSON')
-    parser.add_argument('--anchors', help='subset anchors.json; required with --subset')
-    parser.add_argument('--fallback', default=str(protocol.FALLBACK))
     parser.add_argument('--epochs', type=int, help='legacy budget shorthand: epochs times the full train pool')
     parser.add_argument('--updates', type=int, help='exact optimizer budget; default 62496')
     parser.add_argument('--validate-every', type=int, help='optimizer updates between validations; default 3906')
@@ -57,7 +54,7 @@ def arguments(argv=None):
     parser.add_argument('--max-seconds', type=float, default=0, help='allocation wall budget, including startup; 0 disables')
     parser.add_argument('--save-margin-seconds', type=float, default=600)
     parser.add_argument('--allocation-updates', type=int, default=0, help='checkpoint and exit after N more updates; 0 disables')
-    parser.add_argument('--limit-train', type=int, help='debug: cap each selected-pool permutation')
+    parser.add_argument('--limit-train', type=int, help='debug: cap each training-pool permutation')
     parser.add_argument('--limit-val', type=int, help='debug: restrict validation keyframes')
     args = parser.parse_args(argv)
     if args.init == 'se3d' and not args.source:
@@ -67,8 +64,6 @@ def arguments(argv=None):
         parser.error('Scratch runs cannot specify source checkpoint arguments')
     if args.model != 'se_cff' and not args.metrics_python:
         parser.error('--metrics-python is required to select detection checkpoints')
-    if args.subset and not args.anchors:
-        parser.error('--subset requires its own --anchors receipt')
     if args.updates is not None and args.epochs is not None:
         parser.error('Specify --updates or the legacy --epochs shorthand, not both')
     for field in ('updates', 'epochs', 'validate_every', 'limit_train', 'limit_val', 'source_step'):
@@ -109,31 +104,24 @@ def source_checkpoint(args):
 
 
 def prepare_inputs(args):
-    base, subset, rows = protocol.select_train_rows(args.protocol, args.subset)
+    base = protocol.load_protocol(args.protocol)
+    rows = base['splits']['train']
     for split, expected in common.SPLIT_SIZES.items():
         if len(base['splits'][split]) != expected:
             raise ValueError('Transfer protocol has a different ' + split + ' size')
-    anchors_path = Path(args.anchors) if args.anchors else common.ANCHORS
+    anchors_path = common.ANCHORS
     anchors = json.loads(anchors_path.read_text())
     protocol.validate_anchor_dimensions(anchors)
-    if subset is not None:
-        expected = protocol.derive_subset_anchors(base, protocol.sha256(args.protocol), subset,
-                                                  protocol.sha256(args.subset), args.dsec_root,
-                                                  args.labels_root, args.fallback)
-        if anchors != expected:
-            raise ValueError('Subset anchors do not match selected-only training labels and frozen fallback')
-    elif anchors != json.loads(common.ANCHORS.read_text()):
-        raise ValueError('The full-pool protocol uses the frozen full-pool target anchors')
     val_rows = base['splits']['validation'][:args.limit_val]
     inputs = {name: protocol.audit_input_files(values, base, args.dsec_root, args.labels_root)
               for name, values in [('train', rows), ('validation', val_rows)]}
-    return base, subset, rows, anchors_path, anchors, inputs
+    return base, rows, anchors_path, anchors, inputs
 
 
 def run(args, budget):
     output = Path(args.output)
     backend = configure_backend(args.backend_profile, args.strict_determinism)
-    base, subset, rows, anchors_path, anchors, inputs = prepare_inputs(args)
+    base, rows, anchors_path, anchors, inputs = prepare_inputs(args)
     common.configure(anchors)
     source, source_info = source_checkpoint(args)
     code = runtime.code_fingerprint(common.REPO_ROOT)
@@ -153,10 +141,9 @@ def run(args, budget):
                   validation_frames=len(base['splits']['validation'][:args.limit_val]), test_frames=len(base['splits']['test']),
                   selection='Max validation mean Vehicle/Pedestrian official L2 AP; earliest tie' if detection
                   else 'Minimum validation disparity MAE; earliest tie',
-                  sampler='torch.randperm(selected_frames, seed + data_epoch), cycle until update limit',
+                  sampler='torch.randperm(training_frames, seed + data_epoch), cycle until update limit',
                   protocol_sha256=protocol.sha256(args.protocol),
-                  subset_sha256=protocol.sha256(args.subset) if args.subset else None,
-                  subset=subset, anchors_sha256=protocol.sha256(anchors_path),
+                  anchors_sha256=protocol.sha256(anchors_path),
                   anchor_payload_sha256=protocol.json_digest(anchors), source=source_info,
                   input_hashes={name: dict(rows_sha256=value['rows_sha256'], files_sha256=value['files_sha256'])
                                 for name, value in inputs.items()}, code_sha256=code['sha256'],
@@ -197,7 +184,7 @@ def run(args, budget):
                                  lr=1e-4, weight_decay=1e-4)
     roots = dict(dsec_root=args.dsec_root, labels_root=args.labels_root, cache_root=args.cache_root,
                  protocol_path=args.protocol)
-    train = common.dataset('train', generate_target=detection, train_rows=rows, **roots)
+    train = common.dataset('train', generate_target=detection, **roots)
     validation = common.dataset('validation', generate_target=False, **roots)
     validation.rows = validation.rows[:args.limit_val]
     from se3d.data import model_args

@@ -61,21 +61,13 @@ def configure(anchors=ANCHORS):
 
 
 def dataset(split, dsec_root, labels_root, cache_root=None, generate_target=False,
-            protocol_path=PROTOCOL, train_rows=None):
+            protocol_path=PROTOCOL):
     from lib.datasets.dsec_original import DSECKeyframeDataset
     ds = DSECKeyframeDataset(protocol_path, split, generate_target, cache_root)
     ds.original_root = Path(dsec_root)
     ds.labels_root = Path(labels_root)
     if len(ds) != SPLIT_SIZES[split]:
         raise ValueError('Unexpected %s size %d' % (split, len(ds)))
-    if train_rows is not None:
-        if split != 'train' or not train_rows:
-            raise ValueError('Only the training split can be restricted to a nonempty subset')
-        pool = {protocol_utils.frame_key(row): row for row in ds.rows}
-        if any(pool.get(protocol_utils.frame_key(row)) != row for row in train_rows):
-            raise ValueError('Subset rows are not in the protocol training pool')
-        # The constructor reads no annotations. Restrict before the first __getitem__.
-        ds.rows = list(train_rows)
     return ds
 
 

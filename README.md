@@ -33,7 +33,7 @@ and the [weights folder](https://drive.google.com/drive/folders/1MwzAA26ub8axup1
   `SE3D_meta.tar.gz` and `SHA256SUMS`. All archives unpack into `SE3D/`.
 - `weights/`: the checkpoints listed [below](#checkpoints), with `SHA256SUMS`.
 
-If you downloaded the dataset before **2026-10-10**, update and extract
+If you downloaded the dataset before **2026-10-11**, update and extract
 `SE3D_meta.tar.gz` for the license and annotation metadata, and replace
 `manifest.json` and `SHA256SUMS`. The sequence archives are unchanged.
 
